@@ -18,12 +18,15 @@ def keep_Nc_smallest(matrix, Nc):
     return result
 
 # Define your domain boundaries, the number of bins, and their dimensions
-domain_width = 1
-domain_height = 1
-num_bins_x = 5
+domain_x = 1
+domain_y = 1
+domain_z = 1
+num_bins_x = 1
 num_bins_y = 5
-bin_width = domain_width / num_bins_x
-bin_height = domain_height / num_bins_y
+num_bins_z = 1
+bin_size_x = domain_x / num_bins_x
+bin_size_y = domain_y / num_bins_y
+bin_size_z = domain_z / num_bins_z
 
 np.random.seed(0)
 dense = 1 
@@ -31,8 +34,8 @@ dense = 1
 # Generate random particle locations at time t1 and t2 within the domain
 num_particles = 10000
 Nc = 30
-particle_locations_t1 = np.random.rand(num_particles, 2) * np.array([domain_width, domain_height])
-particle_locations_t2 = np.random.rand(num_particles, 2) * np.array([domain_width, domain_height])
+particle_locations_t1 = np.random.rand(num_particles, 3) * np.array([domain_x, domain_y])
+particle_locations_t2 = np.random.rand(num_particles, 3) * np.array([domain_x, domain_y])
 
 # Initialize an empty list to store optimal pairings
 optimal_pairings = []
@@ -40,48 +43,51 @@ optimal_pairings = []
 # Iterate through bins
 for bin_x in range(num_bins_x):
     for bin_y in range(num_bins_y):
-        # Define the boundaries of the current bin
-        bin_x_min = bin_x * bin_width
-        bin_x_max = (bin_x + 1) * bin_width
-        bin_y_min = bin_y * bin_height
-        bin_y_max = (bin_y + 1) * bin_height
+        for bin_z in range(num_bins_z):
+            # Define the boundaries of the current bin
+            bin_x_min = bin_x * bin_size_x
+            bin_x_max = (bin_x + 1) * bin_size_x
+            bin_y_min = bin_y * bin_size_y
+            bin_y_max = (bin_y + 1) * bin_size_y
+            bin_z_min = bin_z * bin_size_z
+            bin_z_max = (bin_z + 1) * bin_size_z
 
-        # Filter particles that fall within the current bin for both times
-        particles_in_bin_t1 = [p for p in particle_locations_t1 if bin_x_min <= p[0] < bin_x_max and bin_y_min <= p[1] < bin_y_max]
-        particles_in_bin_t2 = [p for p in particle_locations_t2 if bin_x_min <= p[0] < bin_x_max and bin_y_min <= p[1] < bin_y_max]
+            # Filter particles that fall within the current bin for both times
+            particles_in_bin_t1 = [p for p in particle_locations_t1 if bin_x_min <= p[0] < bin_x_max and bin_y_min <= p[1] < bin_y_max]
+            particles_in_bin_t2 = [p for p in particle_locations_t2 if bin_x_min <= p[0] < bin_x_max and bin_y_min <= p[1] < bin_y_max]
 
-        print(f"Before: {len(particles_in_bin_t1)},{len(particles_in_bin_t2)}")
+            print(f"Before: {len(particles_in_bin_t1)},{len(particles_in_bin_t2)}")
 
-        if len(particles_in_bin_t1) != len(particles_in_bin_t2):
-            if len(particles_in_bin_t1) > len(particles_in_bin_t2):
-                # Calculate the number of extra particles
-                num_extra_particles = len(particles_in_bin_t1) - len(particles_in_bin_t2)
+            if len(particles_in_bin_t1) != len(particles_in_bin_t2):
+                if len(particles_in_bin_t1) > len(particles_in_bin_t2):
+                    # Calculate the number of extra particles
+                    num_extra_particles = len(particles_in_bin_t1) - len(particles_in_bin_t2)
 
-                # Find the particles in the next bin (bin_x + 1) that are closest to the edge
-                next_bin_x_min = bin_x_min + bin_width
-                next_bin_x_max = bin_x_max + bin_width
-                next_bin_y_min = bin_y_min + bin_height
-                next_bin_y_max = bin_y_max + bin_height
+                    # Find the particles in the next bin (bin_x + 1) that are closest to the edge
+                    next_bin_x_min = bin_x_max
+                    next_bin_x_max = bin_x_max + bin_size_x
+                    next_bin_y_min = bin_y_max
+                    next_bin_y_max = bin_y_max + bin_size_y
 
-                # Filter particles that fall within the next bin
-                particles_in_next_bin_t2 = [p for p in particle_locations_t2 if bin_x_min <= p[0] < bin_x_max and bin_y_min <= p[1] < bin_y_max]
+                    # Filter particles that fall within the next bin
+                    particles_in_next_bin_t2 = [p for p in particle_locations_t2 if bin_x_min <= p[0] < bin_x_max and bin_y_min <= p[1] < bin_y_max]
 
-                # Sort the next bin particles by distance to the edge
-                next_bin_particles_sorted = sorted(particles_in_next_bin_t2, key=lambda p: abs(p[1] - next_bin_y_min))
+                    # Sort the next bin particles by distance to the edge
+                    next_bin_particles_sorted = sorted(particles_in_next_bin_t2, key=lambda p: abs(p[1] - next_bin_y_min))
 
-                # Take the first 'num_extra_particles' particles from the next bin
-                selected_particles_from_next_bin = next_bin_particles_sorted[:num_extra_particles]
+                    # Take the first 'num_extra_particles' particles from the next bin
+                    selected_particles_from_next_bin = next_bin_particles_sorted[:num_extra_particles]
 
-                # Add these selected particles to the current bin
-                particles_in_bin_t2.extend(selected_particles_from_next_bin)
+                    # Add these selected particles to the current bin
+                    particles_in_bin_t2.extend(selected_particles_from_next_bin)
 
-                # Remove these particles from the global domain
-                particle_locations_t2 = [p for p in particle_locations_t2 if p not in selected_particles_from_next_bin]
+                    # Remove these particles from the global domain
+                    particle_locations_t2 = [p for p in particle_locations_t2 if p not in selected_particles_from_next_bin]
 
-        print(f"After: {len(particles_in_bin_t1)},{len(particles_in_bin_t2)}")
-        
-        if len(particles_in_bin_t1) != len(particles_in_bin_t2):
-            raise ValueError("Try again")
+            print(f"After: {len(particles_in_bin_t1)},{len(particles_in_bin_t2)}")
+            
+            if len(particles_in_bin_t1) != len(particles_in_bin_t2):
+                raise ValueError("Try again")
 
 
 
