@@ -4,8 +4,6 @@ from scipy.optimize import linear_sum_assignment
 import scipy.sparse as sp
 from scipy.sparse.csgraph import min_weight_full_bipartite_matching
 
-#test
-
 def keep_Nc_smallest(matrix, Nc):
     # Create a copy of the matrix
     result = matrix.copy()
