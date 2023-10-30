@@ -3,7 +3,6 @@ from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 
 def calculate_subdomain_coordinates(domain_x, domain_y, num_rows, num_columns):
-    domain_x, domain_y
 
     subdomain_coordinates = []
 
