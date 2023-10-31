@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 
 # Define your domain boundaries, the number of bins, and their dimensions
 domain_x = 1
@@ -14,6 +16,8 @@ np.random.seed(0)
 num_particles = 10000
 particle_locations_t1 = np.random.rand(num_particles, 3) * np.array([domain_x, domain_y, domain_z])
 particle_locations_t2 = np.random.rand(num_particles, 3) * np.array([domain_x, domain_y, domain_z])
+
+optimal_pairings = []
 
 def slice_particles(domain_x, domain_y, domain_z, num_bins, direction, particle_locations_t1, particle_locations_t2):
 
@@ -82,10 +86,44 @@ for i in range(num_bins):
             particles_in_bin_t2, slices_t2[i+1] = match_particle_numbers(particles_in_bin_t1, particles_in_bin_t2, direction, slices_t2[i+1])
 
             print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
+            
+            distance_matrix = cdist(particles_in_bin_t1, particles_in_bin_t2)
+            row_ind, col_ind = linear_sum_assignment(distance_matrix)
+
+            # Store the optimal pairings for the current bin
+            for r, c in zip(row_ind, col_ind):
+                particle_t1 = particles_in_bin_t1[r]
+                particle_t2 = particles_in_bin_t2[c]
+                optimal_pairings.append((particle_t1, particle_t2))
+
+
         
         elif len(particles_in_bin_t2) > len(particles_in_bin_t1):
                 
             particles_in_bin_t1, slices_t1[i+1] = match_particle_numbers(particles_in_bin_t2, particles_in_bin_t1, direction, slices_t1[i+1])
 
             print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
+
+            distance_matrix = cdist(particles_in_bin_t1, particles_in_bin_t2)
+            row_ind, col_ind = linear_sum_assignment(distance_matrix)
+
+            # Store the optimal pairings for the current bin
+            for r, c in zip(row_ind, col_ind):
+                particle_t1 = particles_in_bin_t1[r]
+                particle_t2 = particles_in_bin_t2[c]
+                optimal_pairings.append((particle_t1, particle_t2))
+
+    else:
+        
+        distance_matrix = cdist(particles_in_bin_t1, particles_in_bin_t2)
+        row_ind, col_ind = linear_sum_assignment(distance_matrix)
+
+        # Store the optimal pairings for the current bin
+        for r, c in zip(row_ind, col_ind):
+            particle_t1 = particles_in_bin_t1[r]
+            particle_t2 = particles_in_bin_t2[c]
+            optimal_pairings.append((particle_t1, particle_t2))
+        
+
+print(np.array(optimal_pairings).shape)
         
