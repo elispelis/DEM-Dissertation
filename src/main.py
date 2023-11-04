@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import os
+import sys
 from extrapolation import extrapolation
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
@@ -10,22 +11,59 @@ if __name__ == "__main__":
     #simulation parameters
     start_t = 1
     end_t = 10
-    domain_x = (-0.06, 0.06)       
-    domain_y = (-0.015, 0.015)
-    domain_z = (-0.06, 0.06)
-    num_bins = 4
-    direction = "y"
+
+    # domain_x = (-0.06, 0.06)       
+    # domain_y = (-0.015, 0.015)
+    # domain_z = (-0.06, 0.06)
+    # num_bins = 10
+    # direction = "y"
     
-    #get deck    
-    simulation = os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem"))
-    sim_path = os.path.dirname(simulation)
-    extrap = extrapolation(start_t, end_t, simulation, domain_x, domain_y, domain_z, num_bins, direction)
+    # #get deck
+    # simulations = {
+    #     "1": os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem")),
+    #     "2": os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..", '..', "Rot_drum", "HM_10rpm_100k", "Rot_drum.dem"))
+
+    # }
+
+    simulation_settings = {
+        "1": {
+            "domain_x": (-0.06, 0.06),
+            "domain_y": (-0.015, 0.015),
+            "domain_z": (-0.06, 0.06),
+            "num_bins": 4,
+            "direction": "y",
+            "path": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem")),
+        },
+        "2": {
+            "domain_x": (-0.07, 0.07),  # Example different domain for simulation 2
+            "domain_y": (-0.025, 0.025),  # Example different domain for simulation 2
+            "domain_z": (-0.07, 0.07),  # Example different domain for simulation 2
+            "num_bins": 10,  # Example different num_bins for simulation 2
+            "direction": "y",
+            "path": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..', "Rot_drum", "HM_10rpm_100k", "Rot_drum.dem")),
+        }
+    }
+
+
+    simulation = simulation_settings["2"]
+    domain_x, domain_y, domain_z, num_bins, direction, simulation_path = simulation.values()
+    sim_path = os.path.dirname(simulation_path)
+    extrap = extrapolation(start_t, end_t, simulation_path, domain_x, domain_y, domain_z, num_bins, direction)
 
     #assing t1 and t2
     kinetic_energies, peak_times, peak_index, highlight_y = extrap.kin_energies(0.0002, 5)
+
     #get coordinates and split into subdomains
-    particles_t1 = extrap.get_particle_coords(peak_index[1])
-    particles_t2 = extrap.get_particle_coords(peak_index[2])
+
+
+    if simulation == simulation_settings["1"]:
+        particles_t1 = extrap.get_particle_coords(peak_index[1])
+        particles_t2 = extrap.get_particle_coords(peak_index[2])
+    elif simulation == simulation_settings["2"]:
+        particles_t1 = extrap.get_particle_coords(35)
+        particles_t2 = extrap.get_particle_coords(40)
+
+
     slices_t1, slices_t2 = extrap.slice_particles(particles_t1, particles_t2)
 
     for slice in slices_t2:

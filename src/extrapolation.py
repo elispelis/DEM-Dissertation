@@ -110,9 +110,10 @@ class extrapolation:
         return id_dict
 
     def plot_particles(self, particle_coords, id_dict, plot):
-        id_color = np.array([id_dict.get(id,0) for id in particle_coords[:,-1]])
-        particle_coords = np.column_stack((particle_coords, id_color))
-        particle_coords = particle_coords[particle_coords[:,1].argsort()]
+        if len(particle_coords[0,:])<6:
+            id_color = np.array([id_dict.get(id,0) for id in particle_coords[:,-1]])
+            particle_coords = np.column_stack((particle_coords, id_color))
+            particle_coords = particle_coords[particle_coords[:,1].argsort()]
 
         if plot == True:
             #NEEDS CHANGING
