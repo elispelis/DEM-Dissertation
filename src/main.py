@@ -13,8 +13,8 @@ if __name__ == "__main__":
     domain_x = (-0.06, 0.06)       
     domain_y = (-0.015, 0.015)
     domain_z = (-0.06, 0.06)
-    num_bins = 2
-    direction = "x"
+    num_bins = 4
+    direction = "y"
     
     #get deck    
     simulation = os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem"))
@@ -35,6 +35,8 @@ if __name__ == "__main__":
 
     position_dictionary = {}
 
+    pairing_time_tot = 0
+
     for i in range(extrap.num_bins):
         particles_in_bin_t1 = slices_t1[i]
         particles_in_bin_t2 = slices_t2[i]
@@ -48,8 +50,8 @@ if __name__ == "__main__":
 
                 print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
                 
-                distance_matrix = cdist(particles_in_bin_t1, particles_in_bin_t2)
-                row_ind, col_ind = linear_sum_assignment(distance_matrix)
+                row_ind, col_ind, pairing_time = extrap.hungarian_pairing(particles_in_bin_t1, particles_in_bin_t2)
+                pairing_time_tot += pairing_time
 
                 pos_dict = extrap.position_dictionary(particles_in_bin_t1, particles_in_bin_t2, col_ind, particles_t2)
 
@@ -63,25 +65,25 @@ if __name__ == "__main__":
                     
                 particles_in_bin_t1, slices_t1[i+1] = extrap.match_particle_numbers(particles_in_bin_t2, particles_in_bin_t1, slices_t1[i+1])
 
-                print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
+                print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")    
+                
+                row_ind, col_ind, pairing_time = extrap.hungarian_pairing(particles_in_bin_t1, particles_in_bin_t2)
+                pairing_time_tot += pairing_time
 
-                distance_matrix = cdist(particles_in_bin_t1, particles_in_bin_t2)
-                row_ind, col_ind = linear_sum_assignment(distance_matrix)
 
                 pos_dict = extrap.position_dictionary(particles_in_bin_t1, particles_in_bin_t2, col_ind, particles_t2)
                 position_dictionary.update(pos_dict)
         else:
-            
-            distance_matrix = cdist(particles_in_bin_t1, particles_in_bin_t2)
-            row_ind, col_ind = linear_sum_assignment(distance_matrix)
+            row_ind, col_ind, pairing_time = extrap.hungarian_pairing(particles_in_bin_t1, particles_in_bin_t2)
+            pairing_time_tot += pairing_time
             pos_dict = extrap.position_dictionary(particles_in_bin_t1, particles_in_bin_t2, col_ind, particles_t2)
             position_dictionary.update(pos_dict)
-
-        print(len(position_dictionary))
     
     dictionary_err = len(position_dictionary) - particles_t1.shape[0]
     if dictionary_err == 0:
-        extrap.save_dict(sim_path, "peak23_4x_split", position_dictionary)
+        dict_name = f"peak_{num_bins}{direction}_split"
+        extrap.save_dict(sim_path, dict_name, position_dictionary)
+        print(f"Total Run Time: {pairing_time_tot / 60:.0f} min and {pairing_time_tot % 60:.2f} s")
     else:
-        raise ValueError(f"You fucked up. {abs(dictionary_err)} particles remain")
+        raise ValueError(f"Something's wrong. {abs(dictionary_err)} particles remain unmatched")
         
