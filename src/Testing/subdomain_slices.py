@@ -3,9 +3,9 @@ from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 
 # Define your domain boundaries, the number of bins, and their dimensions
-domain_x = 1
-domain_y = 1
-domain_z = 1
+domain_x = (-1, 1)
+domain_y = (-1, 1)
+domain_z = (-1, 1)
 num_bins = 10
 direction = "y"
 
@@ -14,8 +14,8 @@ np.random.seed(0)
 
 # Generate random particle locations within the 3D domain
 num_particles = 10000
-particle_locations_t1 = np.random.rand(num_particles, 3) * np.array([domain_x, domain_y, domain_z])
-particle_locations_t2 = np.random.rand(num_particles, 3) * np.array([domain_x, domain_y, domain_z])
+particle_locations_t1 = np.random.uniform(low=[domain_x[0], domain_y[0], domain_z[0]], high=[domain_x[1], domain_y[1], domain_z[1]], size=(num_particles, 3))
+particle_locations_t2 = np.random.uniform(low=[domain_x[0], domain_y[0], domain_z[0]], high=[domain_x[1], domain_y[1], domain_z[1]], size=(num_particles, 3))
 
 optimal_pairings = []
 
@@ -25,18 +25,36 @@ def slice_particles(domain_x, domain_y, domain_z, num_bins, direction, particle_
     slices_t1 = []
     slices_t2 = []
 
-    bin_size = [domain_x / num_bins, domain_y / num_bins, domain_z / num_bins]
+    #bin_size = [(domain_x[1]-domain_x[0]) / num_bins, (domain_y[1]-domain_y[0]) / num_bins, (domain_z[1]-domain_z[0]) / num_bins]
+    bin_size_x = (domain_x[1] - domain_x[0]) / num_bins
+    bin_size_y = (domain_y[1] - domain_y[0]) / num_bins
+    bin_size_z = (domain_z[1] - domain_z[0]) / num_bins
 
     # Split the domain into slices along the specified direction
     if direction == 'x':
-            slices_t1 = [particle_locations_t1[(particle_locations_t1[:, 0] >= i * bin_size[0]) & (particle_locations_t1[:, 0] < (i + 1) * bin_size[0])] for i in range(num_bins)]
-            slices_t2 = [particle_locations_t2[(particle_locations_t2[:, 0] >= i * bin_size[0]) & (particle_locations_t2[:, 0] < (i + 1) * bin_size[0])] for i in range(num_bins)]
-    elif direction == "y":
-            slices_t1 = [particle_locations_t1[(particle_locations_t1[:, 1] >= j * bin_size[1]) & (particle_locations_t1[:, 1] < (j + 1) * bin_size[1])] for j in range(num_bins)]
-            slices_t2 = [particle_locations_t2[(particle_locations_t2[:, 1] >= j * bin_size[1]) & (particle_locations_t2[:, 1] < (j + 1) * bin_size[1])] for j in range(num_bins)]
-    elif direction == "z":
-            slices_t2 = [particle_locations_t2[(particle_locations_t2[:, 2] >= k * bin_size[2]) & (particle_locations_t2[:, 2] < (k + 1) * bin_size[2])] for k in range(num_bins)]
-            slices_t1 = [particle_locations_t1[(particle_locations_t1[:, 2] >= k * bin_size[2]) & (particle_locations_t1[:, 2] < (k + 1) * bin_size[2])] for k in range(num_bins)]
+        for i in range(num_bins):
+            x_min = domain_x[0] + i * bin_size_x
+            x_max = domain_x[0] + (i + 1) * bin_size_x
+            slice_t1 = particle_locations_t1[(particle_locations_t1[:, 0] >= x_min) & (particle_locations_t1[:, 0] < x_max)]
+            slice_t2 = particle_locations_t2[(particle_locations_t2[:, 0] >= x_min) & (particle_locations_t2[:, 0] < x_max)]
+            slices_t1.append(slice_t1)
+            slices_t2.append(slice_t2)
+    elif direction == 'y':
+        for j in range(num_bins):
+            y_min = domain_y[0] + j * bin_size_y
+            y_max = domain_y[0] + (j + 1) * bin_size_y
+            slice_t1 = particle_locations_t1[(particle_locations_t1[:, 1] >= y_min) & (particle_locations_t1[:, 1] < y_max)]
+            slice_t2 = particle_locations_t2[(particle_locations_t2[:, 1] >= y_min) & (particle_locations_t2[:, 1] < y_max)]
+            slices_t1.append(slice_t1)
+            slices_t2.append(slice_t2)
+    elif direction == 'z':
+        for k in range(num_bins):
+            z_min = domain_z[0] + k * bin_size_z
+            z_max = domain_z[0] + (k + 1) * bin_size_z
+            slice_t1 = particle_locations_t1[(particle_locations_t1[:, 2] >= z_min) & (particle_locations_t1[:, 2] < z_max)]
+            slice_t2 = particle_locations_t2[(particle_locations_t2[:, 2] >= z_min) & (particle_locations_t2[:, 2] < z_max)]
+            slices_t1.append(slice_t1)
+            slices_t2.append(slice_t2)
 
     slices_t1 = [np.array(slice) for slice in slices_t1]
     slices_t2 = [np.array(slice) for slice in slices_t2]
@@ -45,13 +63,13 @@ def slice_particles(domain_x, domain_y, domain_z, num_bins, direction, particle_
 
 slices_t1, slices_t2 = slice_particles(domain_x, domain_y, domain_z, num_bins, direction, particle_locations_t1, particle_locations_t2)
 
-for i in range(num_bins):
-    if direction == "x":
-        print(np.amax(slices_t2[i][:,0]))
-    elif direction =="y":
-        print(np.amax(slices_t2[i][:,1]))
-    elif direction == "z":
-        print(np.amax(slices_t2[i][:,2]))
+# for i in range(num_bins):
+#     if direction == "x":
+#         print(np.amax(slices_t2[i][:,0]))
+#     elif direction =="y":
+#         print(np.amax(slices_t2[i][:,1]))
+#     elif direction == "z":
+#         print(np.amax(slices_t2[i][:,2]))
 
 def match_particle_numbers(higher_particle_n, lower_particle_n, direction, particles_in_next_bin):
     num_extra_particles = len(higher_particle_n) - len(lower_particle_n)

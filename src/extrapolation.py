@@ -9,10 +9,21 @@ from scipy.optimize import linear_sum_assignment
 import os
 
 class extrapolation:
-    def __init__(self, start_t, end_t, deck):
+    def __init__(self, start_t, end_t, deck, domain_x, domain_y, domain_z, num_bins, direction):
         self.start_t = start_t
         self.end_t = end_t
         self.deck = Deck(deck)
+        self.domain_x = domain_x        
+        self.domain_y = domain_y
+        self.domain_z = domain_z
+        self.num_bins = num_bins
+        self.direction = str(direction)
+
+        self.direction_dict = {
+        "x": 0,
+        "y": 1,
+        "z": 2
+        }
 
         if start_t == 0:
             self.start= self.find_nearest(self.deck.timestepValues, deck.timestepValues[1])
@@ -38,6 +49,56 @@ class extrapolation:
         particle_ids = self.deck.timestep[timestep].particle[particle_n].getIds()
 
         return np.column_stack((x_coords, y_coords, z_coords, mass, particle_ids))
+
+    def slice_particles(self, particle_locations_t1, particle_locations_t2):
+
+        # Initialize empty lists for slices
+        slices_t1 = []
+        slices_t2 = []
+
+        #bin_size = [(domain_x[1]-domain_x[0]) / num_bins, (domain_y[1]-domain_y[0]) / num_bins, (domain_z[1]-domain_z[0]) / num_bins]
+        bin_size_x = (self.domain_x[1] - self.domain_x[0]) / self.num_bins
+        bin_size_y = (self.domain_y[1] - self.domain_y[0]) / self.num_bins
+        bin_size_z = (self.domain_z[1] - self.domain_z[0]) / self.num_bins
+
+        # for i in range(self.num_bins):
+        #         x_min = self.domain_x[0] + i * bin_size_x
+        #         x_max = self.domain_x[0] + (i + 1) * bin_size_x
+        #         slice_t1 = particle_locations_t1[(particle_locations_t1[:, self.direction_dict[self.direction]] >= x_min) & (particle_locations_t1[:, 0] < x_max)]
+        #         slice_t2 = particle_locations_t2[(particle_locations_t2[:, self.direction_dict[self.direction]] >= x_min) & (particle_locations_t2[:, 0] < x_max)]
+        #         slices_t1.append(slice_t1)
+        #         slices_t2.append(slice_t2)
+
+        # Split the domain into slices along the specified direction
+        if self.direction == 'x':
+            for i in range(self.num_bins):
+                x_min = self.domain_x[0] + i * bin_size_x
+                x_max = self.domain_x[0] + (i + 1) * bin_size_x
+                slice_t1 = particle_locations_t1[(particle_locations_t1[:, 0] >= x_min) & (particle_locations_t1[:, 0] < x_max)]
+                slice_t2 = particle_locations_t2[(particle_locations_t2[:, 0] >= x_min) & (particle_locations_t2[:, 0] < x_max)]
+                slices_t1.append(slice_t1)
+                slices_t2.append(slice_t2)
+        elif self.direction == 'y':
+            for j in range(self.num_bins):
+                y_min = self.domain_y[0] + j * bin_size_y
+                y_max = self.domain_y[0] + (j + 1) * bin_size_y
+                slice_t1 = particle_locations_t1[(particle_locations_t1[:, 1] >= y_min) & (particle_locations_t1[:, 1] < y_max)]
+                slice_t2 = particle_locations_t2[(particle_locations_t2[:, 1] >= y_min) & (particle_locations_t2[:, 1] < y_max)]
+                slices_t1.append(slice_t1)
+                slices_t2.append(slice_t2)
+        elif self.direction == 'z':
+            for k in range(self.num_bins):
+                z_min = self.domain_z[0] + k * bin_size_z
+                z_max = self.domain_z[0] + (k + 1) * bin_size_z
+                slice_t1 = particle_locations_t1[(particle_locations_t1[:, 2] >= z_min) & (particle_locations_t1[:, 2] < z_max)]
+                slice_t2 = particle_locations_t2[(particle_locations_t2[:, 2] >= z_min) & (particle_locations_t2[:, 2] < z_max)]
+                slices_t1.append(slice_t1)
+                slices_t2.append(slice_t2)
+
+            slices_t1 = [np.array(slice) for slice in slices_t1]
+            slices_t2 = [np.array(slice) for slice in slices_t2]
+
+        return slices_t1, slices_t2
     
     def id_dictionary(self, init_time):
         #divide particles into two groups 
@@ -49,9 +110,10 @@ class extrapolation:
         return id_dict
 
     def plot_particles(self, particle_coords, id_dict, plot):
-        id_color = np.array([id_dict.get(id,0) for id in particle_coords[:,-1]])
-        particle_coords = np.column_stack((particle_coords, id_color))
-        particle_coords = particle_coords[particle_coords[:,1].argsort()]
+        if len(particle_coords[0,:])<6:
+            id_color = np.array([id_dict.get(id,0) for id in particle_coords[:,-1]])
+            particle_coords = np.column_stack((particle_coords, id_color))
+            particle_coords = particle_coords[particle_coords[:,1].argsort()]
 
         if plot == True:
             #NEEDS CHANGING
@@ -86,6 +148,22 @@ class extrapolation:
         highlight_y = np.array(kinetic_energies)[np.searchsorted(self.deck.timestepValues[self.start:], peak_times)]
 
         return kinetic_energies, peak_times, peak_index, highlight_y
+    
+    def match_particle_numbers(self, higher_particle_n, lower_particle_n, particles_in_next_bin):
+        num_extra_particles = len(higher_particle_n) - len(lower_particle_n)
+
+        #sort particles
+        particles_in_next_bin = particles_in_next_bin[particles_in_next_bin[:,self.direction_dict[self.direction]].argsort()]
+        #get closest particles to edge 
+        closest_particles_in_next_bin = particles_in_next_bin[:num_extra_particles]
+        
+        #append particles to balance 
+        lower_particle_n = np.vstack((lower_particle_n, closest_particles_in_next_bin))
+        
+        #remove particles from consideration of the next bin
+        particles_in_next_bin = particles_in_next_bin[num_extra_particles:]
+        
+        return lower_particle_n, particles_in_next_bin
 
     def hungarian_pairing(self, time1_particles, time2_particles):
         # Calculate the cost matrix based on Euclidean distance between coordinates
@@ -101,15 +179,15 @@ class extrapolation:
 
         return row_indices, col_indices, hung_time
 
-    def position_dictionary(self, time1_particles, time2_particles, col_indices):
+    def position_dictionary(self, time1_particles, time2_particles, col_indices, global_time2_particles):
         predicted_time3 = np.empty_like(time1_particles)
 
         # Extrapolate positions from time 2 to time 3 for the matched particles
         for i, j in enumerate(col_indices):
-            matching_id = time1_particles[i, 3]  # Get the ID from time 1
-            matching_indices = np.where(time2_particles[:, 3] == matching_id)[0]  # Find matching IDs in time 2
-            predicted_time3[matching_indices, :3] = time2_particles[matching_indices, :3] #New particle location
-            predicted_time3[matching_indices, -1] = time2_particles[j, -1] #new particle ID
+            matching_id = time1_particles[i, -1]  # Get the ID from time 1
+            matching_indices = np.where(global_time2_particles[:, -1] == matching_id)[0]  # Find matching IDs in time 2
+            predicted_time3[i, :3] = global_time2_particles[matching_indices, :3] #New particle location
+            predicted_time3[i, -1] = time2_particles[j, -1] #new particle ID
 
         #sort time2 and time 3 by ID number
         sorted_indices1 = np.argsort(time2_particles[:,-1])
