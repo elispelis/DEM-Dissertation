@@ -70,14 +70,13 @@ if __name__ == "__main__":
             print(f"before ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
 
             if len(particles_in_bin_t1) > len(particles_in_bin_t2):
-                    
+                #match particles
                 particles_in_bin_t2, slices_t2[i+1] = extrap.match_particle_numbers(particles_in_bin_t1, particles_in_bin_t2, slices_t2[i+1])
-
                 print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
                 
+                #execute pairing and update dictionary
                 row_ind, col_ind, pairing_time = extrap.hungarian_pairing(particles_in_bin_t1, particles_in_bin_t2)
                 pairing_time_tot += pairing_time
-
                 pos_dict = extrap.position_dictionary(particles_in_bin_t1, particles_in_bin_t2, col_ind, particles_t2)
 
                 for key in pos_dict:
@@ -87,25 +86,26 @@ if __name__ == "__main__":
                 position_dictionary.update(pos_dict)
             
             elif len(particles_in_bin_t2) > len(particles_in_bin_t1):
-                    
+                #match particles
                 particles_in_bin_t1, slices_t1[i+1] = extrap.match_particle_numbers(particles_in_bin_t2, particles_in_bin_t1, slices_t1[i+1])
-
                 print(f"after ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")    
                 
+                #execute pairing and update dictionary
                 row_ind, col_ind, pairing_time = extrap.hungarian_pairing(particles_in_bin_t1, particles_in_bin_t2)
                 pairing_time_tot += pairing_time
-
-
                 pos_dict = extrap.position_dictionary(particles_in_bin_t1, particles_in_bin_t2, col_ind, particles_t2)
                 position_dictionary.update(pos_dict)
         else:
+            #execute pairing and update dictionary if n. of particles in bins match 
             row_ind, col_ind, pairing_time = extrap.hungarian_pairing(particles_in_bin_t1, particles_in_bin_t2)
             pairing_time_tot += pairing_time
             pos_dict = extrap.position_dictionary(particles_in_bin_t1, particles_in_bin_t2, col_ind, particles_t2)
             position_dictionary.update(pos_dict)
     
+    #error checking
     dictionary_err = len(position_dictionary) - particles_t1.shape[0]
     if dictionary_err == 0:
+        #save pairing dictionary
         dict_name = f"peak_{num_bins}{direction}_split"
         extrap.save_dict(sim_path, dict_name, position_dictionary)
         print(f"Total Run Time: {pairing_time_tot / 60:.0f} min and {pairing_time_tot % 60:.2f} s")
