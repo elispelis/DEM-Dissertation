@@ -12,19 +12,7 @@ if __name__ == "__main__":
     start_t = 1
     end_t = 10
 
-    # domain_x = (-0.06, 0.06)       
-    # domain_y = (-0.015, 0.015)
-    # domain_z = (-0.06, 0.06)
-    # num_bins = 10
-    # direction = "y"
-    
-    # #get deck
-    # simulations = {
-    #     "1": os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem")),
-    #     "2": os.path.abspath(os.path.join(os.path.dirname( __file__ ), "..", '..', "Rot_drum", "HM_10rpm_100k", "Rot_drum.dem"))
-
-    # }
-
+    # simulations and their properties
     simulation_settings = {
         "1": {
             "domain_x": (-0.06, 0.06),
@@ -35,16 +23,16 @@ if __name__ == "__main__":
             "path": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem")),
         },
         "2": {
-            "domain_x": (-0.07, 0.07),  # Example different domain for simulation 2
-            "domain_y": (-0.025, 0.025),  # Example different domain for simulation 2
-            "domain_z": (-0.07, 0.07),  # Example different domain for simulation 2
-            "num_bins": 10,  # Example different num_bins for simulation 2
+            "domain_x": (-0.07, 0.07), 
+            "domain_y": (-0.025, 0.025), 
+            "domain_z": (-0.07, 0.07), 
+            "num_bins": 10,  
             "direction": "y",
             "path": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..', "Rot_drum", "HM_10rpm_100k", "Rot_drum.dem")),
         }
     }
 
-
+    #choose simulation
     simulation = simulation_settings["2"]
     domain_x, domain_y, domain_z, num_bins, direction, simulation_path = simulation.values()
     sim_path = os.path.dirname(simulation_path)
@@ -54,8 +42,6 @@ if __name__ == "__main__":
     kinetic_energies, peak_times, peak_index, highlight_y = extrap.kin_energies(0.0002, 5)
 
     #get coordinates and split into subdomains
-
-
     if simulation == simulation_settings["1"]:
         particles_t1 = extrap.get_particle_coords(peak_index[1])
         particles_t2 = extrap.get_particle_coords(peak_index[2])
@@ -66,22 +52,23 @@ if __name__ == "__main__":
 
     slices_t1, slices_t2 = extrap.slice_particles(particles_t1, particles_t2)
 
+    #check that slicing is correct
     for slice in slices_t2:
         print(np.amin(slice[:,extrap.direction_dict[extrap.direction]]))
 
-    #initialise position dictionary
-
+    #initialise position dictionary and pairing time
     position_dictionary = {}
-
     pairing_time_tot = 0
 
+    #perform pairing algorithm
     for i in range(extrap.num_bins):
         particles_in_bin_t1 = slices_t1[i]
         particles_in_bin_t2 = slices_t2[i]
 
+        #particles in bins dont match
         if len(particles_in_bin_t1) != len(particles_in_bin_t2):
-
             print(f"before ({i}): {len(particles_in_bin_t1), len(particles_in_bin_t2)}")
+
             if len(particles_in_bin_t1) > len(particles_in_bin_t2):
                     
                 particles_in_bin_t2, slices_t2[i+1] = extrap.match_particle_numbers(particles_in_bin_t1, particles_in_bin_t2, slices_t2[i+1])
