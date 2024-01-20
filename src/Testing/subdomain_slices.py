@@ -19,6 +19,8 @@ particle_locations_t2 = np.random.uniform(low=[domain_x[0], domain_y[0], domain_
 
 optimal_pairings = []
 
+optimal_pairings = []
+
 def slice_particles(domain_x, domain_y, domain_z, num_bins, direction, particle_locations_t1, particle_locations_t2):
 
     # Initialize empty lists for slices
