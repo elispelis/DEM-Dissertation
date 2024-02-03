@@ -20,25 +20,33 @@ def init_logger(is_main=True, is_distributed=False, filename=None):
     return logger
 
 def init_distritubed_mode(flags):
-    flags["world_size"] = int(os.environ["WORLD_SIZE"])
-    flags["local_rank"] = int(os.environ["LOCAL_RANK"])
-    
-    flags["is_main"] = flags["local_rank"] == 0
-    flags["is_distributed"] = flags["world_size"] > 1
-    flags["is_cuda"] = torch.cuda.is_available()
+    if flags["is_cuda"] and not torch.cuda.is_available():
+        flags["is_cuda"] = False
+        
+    if flags["is_cuda"]:
+        flags["world_size"] = int(os.environ["WORLD_SIZE"])
+        flags["local_rank"] = int(os.environ["LOCAL_RANK"])
+        
+        flags["is_main"] = flags["local_rank"] == 0
+        flags["is_distributed"] = flags["world_size"] > 1
+    else:
+        flags["world_size"] = 1
+        flags["local_rank"] = 0
+        
+        flags["is_main"] = True
+        flags["is_distributed"] = False
     
     if flags["is_cuda"]:
-        torch.cuda.set_device(flags["local_rank"])
         device = torch.device("cuda", flags["local_rank"])
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    flags["device"] = device
-    
-    torch.distributed.init_process_group(
+        torch.cuda.set_device(device)
+        torch.distributed.init_process_group(
         init_method="env://",
         backend="nccl",
         world_size=flags["world_size"],
-    )
+        )
+    else:
+        device = torch.device("cpu")
+    flags["device"] = device
     
     return flags
     

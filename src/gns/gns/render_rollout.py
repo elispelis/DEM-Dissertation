@@ -219,8 +219,7 @@ if __name__ == '__main__':
     myflags = {}
     myflags["rollout_dir"] = f"../results/rollouts/{dataset}/"
     myflags["exp_id"] = 0
-    myflags["example_id"] = 0
-    myflags["checkpoint_step"] = 8000
+    myflags["checkpoint_step"] = 18000
     myflags["output_mode"] = "gif" # gif or vtk
     myflags["step_stride"] = 3
     main(myflags)

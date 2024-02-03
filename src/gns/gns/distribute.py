@@ -65,3 +65,17 @@ def get_data_distributed_dataloader_by_samples(path, input_length_sequence, batc
     sampler = DistributedSampler(dataset, shuffle=shuffle)
     return torch.utils.data.DataLoader(dataset=dataset, sampler=sampler, batch_size=batch_size,
                                        pin_memory=True, collate_fn=data_loader.collate_fn)
+    
+def get_data_distributed_dataloader_SAG_Mill_baseline(path, input_length_sequence, batch_size, train_ratio, shuffle=True):
+    """Returns a distributed dataloader.
+    
+    Args:
+        path (str): Path to dataset.
+        input_length_sequence (int): Length of input sequence.
+        batch_size (int): Batch size.
+        shuffle (bool): Whether to shuffle dataset.
+    """
+    dataset = data_loader.SAGMillSamplesDataset_Baseline(path, input_length_sequence, train_ratio)
+    sampler = DistributedSampler(dataset, shuffle=shuffle)
+    return torch.utils.data.DataLoader(dataset=dataset, sampler=sampler, batch_size=batch_size,
+                                       pin_memory=True, collate_fn=data_loader.collate_fn_baseline)

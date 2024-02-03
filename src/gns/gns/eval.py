@@ -15,11 +15,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from gns import learned_simulator
+from gns import learned_simulator_baseline as learned_simulator
 from gns import noise_utils
 from gns import reading_utils
 from gns import data_loader
-from gns import distribute
 
 import utils.utils as utils
 
@@ -29,10 +28,9 @@ KINEMATIC_PARTICLE_ID = 3
 
 def rollout(
         simulator: learned_simulator.LearnedSimulator,
-        position: torch.tensor,
-        particle_types: torch.tensor,
-        n_particles_per_example: torch.tensor,
-        nsteps: int,
+        position: torch.Tensor,
+        particle_types: torch.Tensor,
+        edge_index: torch.Tensor,
         device):
     """Rolls out a trajectory by applying the model in sequence.
 
@@ -41,18 +39,21 @@ def rollout(
         features: Torch tensor features.
         nsteps: Number of steps.
     """
+    position = position.to(device)
     initial_positions = position[:, :INPUT_SEQUENCE_LENGTH]
+    edge_index = edge_index[INPUT_SEQUENCE_LENGTH-1:]
     ground_truth_positions = position[:, INPUT_SEQUENCE_LENGTH:]
 
     current_positions = initial_positions
     predictions = []
-
+    particle_types = particle_types.to(device)
+    nsteps = ground_truth_positions.shape[1]
     for step in range(nsteps):
         # Get next position with shape (nnodes, dim)
         next_position = simulator.predict_positions(
             current_positions,
-            nparticles_per_example=[n_particles_per_example],
             particle_types=particle_types,
+            edge_index=torch.tensor(edge_index[step]).to(device).contiguous(),
         )
 
         # Update kinematic particles from prescribed trajectory.
@@ -130,10 +131,9 @@ def _get_simulator(
         nnode_in=37 if metadata['dim'] == 3 else 30,
         nedge_in=metadata['dim'] + 1,
         latent_dim=128,
-        nmessage_passing_steps=10,
+        nmessage_passing_steps=5,
         nmlp_layers=2,
         mlp_hidden_dim=128,
-        connectivity_radius=metadata['default_connectivity_radius'],
         boundaries=np.array(metadata['bounds']),
         normalization_stats=normalization_stats,
         nparticle_types=NUM_PARTICLE_TYPES,
@@ -155,6 +155,9 @@ def eval_on_step(device: str, flags):
 
     max_loss = torch.tensor(float('inf'))
     best_checkpoint_step = 0
+    ds = data_loader.get_data_loader_SAG_Mill_by_trajectories_baseline(path=f'{flags["data_path"]}', input_length_sequence=INPUT_SEQUENCE_LENGTH, valid_ratio=flags["valid_ratio"])
+    sequence_len = len(ds)
+    
     for checkpoint_step in range(flags["start_checkpoint"], flags["end_checkpoint"], flags["chechpoint_step"]):
         # Load simulator
         logger.info("Load {}-th step checkpoint".format(checkpoint_step))
@@ -166,36 +169,30 @@ def eval_on_step(device: str, flags):
         simulator.to(device)
         simulator.eval()
 
-        ds = data_loader.get_data_loader_by_trajectories(path=f'{flags["data_path"]}valid.npz')
-
         eval_loss = []
         with torch.no_grad():
-            for example_i, (positions, particle_type, n_particles_per_example) in enumerate(ds):
-                positions.to(device)
-                particle_type.to(device)
-                n_particles_per_example = torch.tensor([int(n_particles_per_example)], dtype=torch.int32).to(device)
 
-                nsteps = metadata['sequence_length'] - INPUT_SEQUENCE_LENGTH
-                # Predict example rollout
-                example_rollout, loss = rollout(simulator, positions.to(device), particle_type.to(device),
-                                                n_particles_per_example.to(device), nsteps, device)
+            position, particle_types, edge_index, n_particles_per_example = ds.data()
+            # Predict example rollout
+            example_rollout, loss = rollout(simulator, position, particle_types, edge_index, device)
 
+            example_rollout['metadata'] = metadata
+            loss = torch.sqrt(loss[:, :, 0]**2 + loss[:, :, 1]**2 + loss[:, :, 2]**2)
+            logger.info("Predicting loss: {:.6f}".format(loss.mean()))
+            eval_loss.append(torch.flatten(loss))
+
+            # Save rollout in testing
+            if flags["save_rollout"]:
                 example_rollout['metadata'] = metadata
-                logger.info("Predicting example {} loss: {:.6f}".format(example_i, loss.mean()))
-                eval_loss.append(torch.flatten(loss))
+                filename = f'{flags["exp_id"]}_rollout_{checkpoint_step}_{loss.mean():.4f}.pkl'
+                filename = os.path.join(flags["output_path"], filename)
+                with open(filename, 'wb') as f:
+                    pickle.dump(example_rollout, f)
 
-                # Save rollout in testing
-                if flags["save_rollout"]:
-                    example_rollout['metadata'] = metadata
-                    filename = f'{flags["exp_id"]}_rollout_{example_i}_{checkpoint_step}_{loss.mean():.4f}.pkl'
-                    filename = os.path.join(flags["output_path"], filename)
-                    with open(filename, 'wb') as f:
-                        pickle.dump(example_rollout, f)
-
-        logger.info("Mean loss on rollout prediction with {}-th step checkpoint: {}".format(
-            checkpoint_step, torch.mean(torch.cat(eval_loss))))
-        if torch.mean(torch.cat(eval_loss)) < max_loss:
-            loss = torch.mean(torch.cat(eval_loss))
+        logger.info("Mean loss on rollout prediction with {}-th step checkpoint: {:.6f}".format(
+            checkpoint_step, loss.mean()))
+        if loss.mean() < max_loss:
+            max_loss = loss.mean()
             best_checkpoint_step = checkpoint_step
             logger.info("Best checkpoint step: {}".format(best_checkpoint_step))
     
@@ -203,18 +200,39 @@ def eval_on_step(device: str, flags):
     os.system(f'cp {flags["model_path"]}{flags["exp_id"]}-model-{best_checkpoint_step}.pt {flags["model_path"]}{flags["exp_id"]}-model-{best_checkpoint_step}-best.pt')
     os.system(f'cp {flags["model_path"]}{flags["exp_id"]}-train-state-{best_checkpoint_step}.pt {flags["model_path"]}{flags["exp_id"]}-train-state-{best_checkpoint_step}-best.pt')
     
+    simulator.load(f'{flags["model_path"]}{flags["exp_id"]}-model-{best_checkpoint_step}-best.pt')
+    simulator.to(device)
+    simulator.eval()
+    with torch.no_grad():
+        position, particle_types, edge_index, n_particles_per_example = ds.data()
+        # Predict example rollout
+        example_rollout, loss = rollout(simulator, position, particle_types, edge_index, device)
+
+        loss = torch.sqrt(loss[:, :, 0]**2 + loss[:, :, 1]**2 + loss[:, :, 2]**2)
+        logger.info("Predicting loss: {:.6f}".format(loss.mean()))
+        error_trend = torch.mean(loss, dim=1).cpu().numpy()
+        np.save(f'{flags["output_path"]}{flags["exp_id"]}-error-trend.npy', error_trend)
+    
 if __name__ == '__main__':
-    dataset = 'WaterDropSample'
+    default_data_path = "/mnt/raid0sata1/hcj/SAG_Mill/Train_Data"
+
+    default_ds_name = "SAGMill"
+    default_res_dir="./results"
+
+    default_model_path=f"{default_res_dir}/models/{default_ds_name}/"
+    default_rollouts_path=f"{default_res_dir}/rollouts/{default_ds_name}/"
+
     myflags = {}
-    myflags["data_path"] = f"/mnt/data/hcj/GNS_TrainingData/{dataset}/dataset/"
+    myflags["data_path"] = default_data_path
     myflags["noise_std"] = 6.7e-4
-    myflags["model_path"] = f"../results/models/{dataset}/"
+    myflags["model_path"] = default_model_path
     myflags["exp_id"] = 0
     myflags["save_rollout"] = True
     myflags["start_checkpoint"] = 0
-    myflags["end_checkpoint"] = 32000+1
+    myflags["end_checkpoint"] = 60000+1
     myflags["chechpoint_step"] = 2000
-    myflags["output_path"] = f"../results/rollouts/{dataset}/"
-    myflags["log_path"] = "../results/"
+    myflags["output_path"] = default_rollouts_path
+    myflags["log_path"] = default_res_dir
+    myflags["valid_ratio"] = 0.3
     
-    eval_on_step('cuda:0', myflags)
+    eval_on_step('cuda:7', myflags)
