@@ -104,4 +104,4 @@ if __name__ == "__main__":
     #     last_sequences.append(X_test[i])
 
     # last_sequences = np.array(last_sequences)
-    model.save(f"../model/model_sl{seq_length}_tr{train_size*num_features}.h5")
+    model.save(f"../model/model_sl{seq_length}_tr{train_size/num_features}.h5")
