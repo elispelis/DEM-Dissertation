@@ -3,31 +3,23 @@ import numpy as np
 from keras import Sequential
 from keras.layers import GRU, Dense, SimpleRNN
 
-df = pd.read_csv("3_4_0.05s.csv", index_col=0)
+def rnn_arch(seq_length,num_features):
+    # Define the RNN model
+    model = Sequential()
 
-num_timesteps = df.shape[1] // 3
-num_particles = df.shape[0]
-seq_length = 5
+    # Add a SimpleRNN layer with the specified number of units
+    model.add(GRU(units=seq_length, activation='relu', input_shape=(seq_length, num_features)))
 
-df = df.values.reshape(-1, num_timesteps, 3)
+    # Add a Dense layer for the output with the appropriate number of units (equal to the number of features)
+    model.add(Dense(units=num_features, activation='linear'))
 
-num_features = df.shape[2]
+    # Compile the model with an appropriate optimizer and loss function
+    model.compile(optimizer='adam', loss='mse')  # Adjust optimizer and loss function as needed
 
+    # Print the summary of the model architecture
+    model.summary()
 
-# Define the RNN model
-model = Sequential()
-
-# Add a SimpleRNN layer with the specified number of units
-model.add(GRU(units=50, activation='relu', input_shape=(seq_length, num_features)))
-
-# Add a Dense layer for the output with the appropriate number of units (equal to the number of features)
-model.add(Dense(units=num_features, activation='linear'))
-
-# Compile the model with an appropriate optimizer and loss function
-model.compile(optimizer='adam', loss='mse')  # Adjust optimizer and loss function as needed
-
-# Print the summary of the model architecture
-model.summary()
+    return model
 
 
 # model = Sequential()
@@ -79,19 +71,37 @@ def split_sequences(dataframe, n_steps):
     return np.array(x_data), np.array(y_data) 
 
 
-train_size = int(len(df) * 0.8)  # 80% training, 20% testing
-train, test = df[0:train_size], df[train_size:]
+if __name__ == "__main__":
 
-# Apply the split_sequences function to create input-output pairs
-X_train, y_train = split_sequences(train, seq_length)
-X_test, y_test = split_sequences(test, seq_length)
+    df = pd.read_csv("../model/3_4_0.05s.csv", index_col=0)
 
-# # Train the model
-history = model.fit(X_train, y_train, epochs=5, batch_size=16, validation_data=(X_test, y_test))
+    num_features = 3
+    num_timesteps = df.shape[1] // num_features
+    num_particles = df.shape[0]
+    seq_length = 10
 
-last_sequences = []
+    train_frac = 0.8
+    train_size = int(train_frac*num_timesteps*num_features)
+    train_df = df.iloc[:, :train_size]
+    test_df = df.iloc[:, (num_timesteps-seq_length-1)*num_features:]
 
-for i in np.arange(num_timesteps-seq_length-1, X_test.shape[0], num_timesteps-seq_length):
-    last_sequences.append(X_test[i])
+    train_df = train_df.values.reshape(-1, int(num_timesteps*train_frac), 3)
+    test_df = test_df.values.reshape(-1, seq_length+1, 3)
 
-last_sequences = np.array(last_sequences)
+
+    # Apply the split_sequences function to create input-output pairs
+    X_train, y_train = split_sequences(train_df, seq_length)
+    X_test, y_test = split_sequences(test_df, seq_length)
+
+    model = rnn_arch(seq_length, num_features)
+
+    # Train the model
+    history = model.fit(X_train, y_train, epochs=5, batch_size=16, validation_data=(X_test, y_test))
+
+    # last_sequences = []
+
+    # for i in np.arange(num_timesteps-seq_length-1, X_test.shape[0], num_timesteps-seq_length):
+    #     last_sequences.append(X_test[i])
+
+    # last_sequences = np.array(last_sequences)
+    model.save(f"../model/model_sl{seq_length}_tr{train_size*num_features}.h5")
