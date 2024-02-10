@@ -9,11 +9,11 @@ from scipy.optimize import linear_sum_assignment
 import os
 
 class extrapolation:
-    def __init__(self, start_t, end_t, deck, domain_x, domain_y, domain_z, num_bins, direction):
+    def __init__(self, start_t, end_t, deck=None, domain_x=None, domain_y=None, domain_z=None, num_bins=None, direction=None):
         self.start_t = start_t
         self.end_t = end_t
-        self.deck = Deck(deck)
-        self.domain_x = domain_x        
+        self.deck = None
+        self.domain_x = domain_x 
         self.domain_y = domain_y
         self.domain_z = domain_z
         self.num_bins = num_bins
@@ -25,6 +25,9 @@ class extrapolation:
         "z": 2
         }
 
+        if deck is not None:
+            self.load_deck(deck)
+
         if start_t == 0:
             self.start= self.find_nearest(self.deck.timestepValues, deck.timestepValues[1])
         else:
@@ -34,6 +37,9 @@ class extrapolation:
         self.end=self.find_nearest(self.deck.timestepValues, end_t)
         self.sim_time = np.arange(self.start,self.end+1,1)
         self.sim_time=self.sim_time.astype(int)
+
+    def load_deck(self, deck):
+        self.deck = Deck(deck)
 
     def find_nearest(self, array, value):
             array=np.array(array)
