@@ -2,7 +2,7 @@
 """
 Created on Fri Feb 18 15:41:33 2022
 
-@author: spantaleev, elisbright
+@author: spantaleev
 """
 
 from edempy import Deck
@@ -75,6 +75,17 @@ class LaceyMixingAnalyzer:
                 conc[i] = mass_1[i] / (mass_1[i] + mass_2[i])
 
         return mass_1, mass_2, conc
+    
+    def bin_particles(self, b_coords, div_size, particles):
+        
+        for i in range(len(b_coords)):
+            mins = b_coords[i] - div_size / 2
+            maxs = b_coords[i] + div_size / 2
+            
+            slice_t1 = particles[(particles[:, 0] < maxs[0]) & (particles[:, 1] < maxs[1]) & (particles[:, 2] < maxs[2]) &
+                                (particles[:, 0] > mins[0]) & (particles[:, 1] > mins[1]) & (particles[:, 2] > mins[2])]
+            
+        return slice_t1
 
     def Lacey(self, mass_1, mass_2, conc, cut_off, p_num):
         P = np.sum(mass_1) / (np.sum(mass_1) + np.sum(mass_2))

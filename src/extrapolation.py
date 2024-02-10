@@ -105,7 +105,7 @@ class extrapolation:
         particle_coords_start = self.get_particle_coords(init_time)
         particle_color = np.where(particle_coords_start[:,0] < 0, 1, 0)
         particle_coords_initial = np.column_stack((particle_coords_start, particle_color))
-        id_dict = dict(particle_coords_initial[:,-2:])
+        id_dict = dict(particle_coords_initial[:,-2:])  # make the index a variable in the function
 
         return id_dict
 

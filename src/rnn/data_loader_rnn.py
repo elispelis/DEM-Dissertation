@@ -4,11 +4,6 @@ import pandas as pd
 from edempy import Deck
 import numpy as np
 
-sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem"]
-sim_name = sim_names[0]
-sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
-
-
 class RNNLoader:
     def __init__(self, start_t, end_t, deck):
         self.start_t = start_t
@@ -93,13 +88,19 @@ class RNNLoader:
 
 
 
+if __name__ == "__main__":
+        
+    sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem"]
+    sim_name = sim_names[0]
+    sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
 
-rnn = RNNLoader(3,4,sim_path)
 
-delta_t_rnn = 0.05
+    rnn = RNNLoader(3,4,sim_path)
 
-print("Generating DataFrame...")
-rnn_df = rnn.local_mean_position(delta_t_rnn)
+    delta_t_rnn = 0.05
+
+    print("Generating DataFrame...")
+    rnn_df = rnn.local_mean_position(delta_t_rnn)
 
 
 
