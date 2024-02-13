@@ -73,14 +73,14 @@ def split_sequences(dataframe, n_steps):
 
 if __name__ == "__main__":
 
-    df = pd.read_csv("../model/3_4_0.05s.csv", index_col=0)
+    df = pd.read_csv("../../model/3_7_0.02s_adj.csv", index_col=0)
 
     num_features = 3
     num_timesteps = df.shape[1] // num_features
     num_particles = df.shape[0]
-    seq_length = 10
+    seq_length = 25
 
-    train_frac = 0.8
+    train_frac = 0.9
     train_size = int(train_frac*num_timesteps*num_features)
     train_df = df.iloc[:, :train_size]
     test_df = df.iloc[:, (num_timesteps-seq_length-1)*num_features:]
@@ -96,12 +96,11 @@ if __name__ == "__main__":
     model = rnn_arch(seq_length, num_features)
 
     # Train the model
-    history = model.fit(X_train, y_train, epochs=5, batch_size=16, validation_data=(X_test, y_test))
-
+    history = model.fit(X_train, y_train, epochs=30, batch_size=64, validation_data=(X_test, y_test))
     # last_sequences = []
 
     # for i in np.arange(num_timesteps-seq_length-1, X_test.shape[0], num_timesteps-seq_length):
     #     last_sequences.append(X_test[i])
 
     # last_sequences = np.array(last_sequences)
-    model.save(f"../model/model_sl{seq_length}_tr{train_size/num_features}.h5")
+    model.save(f"../../model/model_sl{seq_length}_tr{int(train_size/num_features)}_adj.h5")

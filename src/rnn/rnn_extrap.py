@@ -10,13 +10,17 @@ from extrapolation import extrapolation
 import os
 import matplotlib.pyplot as plt
 import pickle
+from matplotlib.animation import FuncAnimation
 
 sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed"]
 sim_name = sim_names[0]
 sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
 id_dict_path = rf"V:\GrNN_EDEM-Sims\{sim_name}_data\Export_Data"
-model_path = "../model/model_sl10_tr144.h5"
-data_path = "../model/3_4_0.05s.csv"
+model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5"]
+data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", "../../model/3_7_0.02s_adj.csv"]
+case = -3
+data_path = data_paths[case]
+model_path = model_paths[case]
 
 # # Initialise variables and call class
 # simulation = os.path.abspath(os.path.join("..", "..", '..', 'data', "rot_drum", "JKR_periodic_clean", "Rot_drum.dem"))
@@ -40,30 +44,36 @@ data_path = "../model/3_4_0.05s.csv"
 #     file.close()
 #     settings = True
 
-print("Loading deck...")
-#extrap = extrapolation(start_t, end_t, sim_path, domain_x, domain_y, domain_z, 1, "y")
-print("done")
+# print("Loading deck...")
+# extrap = extrapolation(start_t, end_t, sim_path, domain_x, domain_y, domain_z, 1, "y")
+# print("done")
 # lacey = LaceyMixingAnalyzer(minCoords, maxCoords, 5, sim_path)
 # rnn = RNNLoader(start_t, end_t, sim_path)
 
-def plot_particles(particle_coords, id_dict, plot):
+def plot_particles(particle_coords, id_dict, plot, time=None):
     if len(particle_coords[0,:])<6:
         id_color = np.array([id_dict.get(id,0) for id in particle_coords[:,-1]])
         particle_coords = np.column_stack((particle_coords, id_color))
         particle_coords = particle_coords[particle_coords[:,1].argsort()]
 
     if plot == True:
-        #NEEDS CHANGING
-        particle_plt_size = 10**4*(2/25.4)**2
+        fig, ax = plt.subplots(figsize=(8,8))
 
-        fig, ax = plt.subplots(figsize=(8,12))
         ax.add_patch(plt.Circle((0,0), 0.07, color="lightblue"))
-
-        ax.scatter(particle_coords[:,0], particle_coords[:,2], s=particle_plt_size, edgecolors="k", c=particle_coords[:,-1], cmap="coolwarm")
-        ax = plt.gca()
-        ax.set_aspect('equal', adjustable='box')
         ax.set_ylim(-0.08, 0.03)
         ax.set_xlim(-0.08, 0.08)
+
+        r = 0.00075
+        # radius in display coordinates:
+        r_ = ax.transData.transform([r,0])[0] - ax.transData.transform([0,0])[0]
+        # marker size as the area of a circle
+        particle_plt_size = np.pi * r_**2
+
+        ax.scatter(particle_coords[:,0], particle_coords[:,2], s=particle_plt_size, edgecolors="k", linewidth=0.25, c=particle_coords[:,-1], cmap="coolwarm")
+        ax = plt.gca()
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_title(f"{time:.2f}s")
+        
         plt.show()
 
     return particle_coords
@@ -75,6 +85,25 @@ def import_dict(dict_path, dict_name):
             with open(os.path.join(dict_path, pos_dict_name), "rb") as file:
                 pos_dict = pickle.load(file)
     return pos_dict
+
+
+def fix_particle_coords(local_mean, drum_r, drum_w):
+    distances = np.sqrt((local_mean[:, 0])**2+(local_mean[:, 2])**2)
+    violating_particles = np.where(distances>drum_r)
+
+    for particle_idx in violating_particles:
+        # Normalize the position vector
+        norm_factor = drum_r / distances[particle_idx]
+        local_mean[particle_idx, 0] *= norm_factor
+        local_mean[particle_idx, 2] *= norm_factor
+    
+    violating_particles = np.where(abs(local_mean[:,1])>drum_w)
+
+    for particle_idx_w in violating_particles:
+            sign_w = np.sign(local_mean[particle_idx_w, 1])
+            local_mean[particle_idx_w, 1] = sign_w * drum_w
+
+    return local_mean
 
 
 # def bin_particles(particles, bounding_box, num_bins_per_dimension):
@@ -122,11 +151,13 @@ df = pd.read_csv(data_path, index_col=0)
 num_features = 3
 num_timesteps = df.shape[1] // num_features
 num_particles = df.shape[0]
-seq_length = 10
+seq_length = 15
 
 last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
 
 last_seq = last_seq.values.reshape(-1, seq_length, num_features)
+
+particle_loc_fix = True
 
 # last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
 # index_values = last_seq.index.values.reshape(-1, 1, 1)
@@ -134,16 +165,27 @@ last_seq = last_seq.values.reshape(-1, seq_length, num_features)
 # last_seq = last_seq.values.reshape(-1, seq_length, num_features)
 # last_seq = np.concatenate([last_seq, index_values_for_last_elem], axis=2)
 
+start_t = 5.9
 t_rnn = 0.05
-extrap_time = t_rnn*20
+extrap_time = t_rnn*200
+drum_r = 0.07
+drum_w = 0.025
 
+
+#distance = (last_seq[:, -1, :][:, 0])**2+(last_seq[:, -1, :][:, 2])**2
 
 for i in range(int(extrap_time/t_rnn)):
     pred_timestep = model.predict(last_seq)
+
+    if particle_loc_fix == True:
+        pred_timestep = fix_particle_coords(pred_timestep, drum_r, drum_w)
+    
     last_seq = last_seq[:, 1:, :]
     last_seq = np.concatenate((last_seq, pred_timestep[:, np.newaxis, :]), axis=1)
 
-    id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
-    pred_timestep = np.hstack((pred_timestep, id_column))
-    plot_particles(pred_timestep, id_dict, True)
-    plt.show()
+    if i % 5 == 0 and i != 0:
+        id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
+        pred_timestep = np.hstack((pred_timestep, id_column))
+        time_i = start_t+(i+1)*t_rnn
+        print(f"{time_i}s")
+        plot_particles(pred_timestep, id_dict, True, time_i)

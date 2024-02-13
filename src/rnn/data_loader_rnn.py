@@ -65,7 +65,7 @@ class RNNLoader:
     
     def local_mean_position(self, delta_t):
 
-        num_particles = self.deck.timestep[rnn.start].particle[0].getNumParticles()
+        num_particles = self.deck.timestep[rnn.start].particle[0].getNumParticles()  # change for more than 1 particle type
         df = pd.DataFrame(index=np.arange(1,num_particles+1,1))
 
         for timestep in np.arange(self.start_t, self.end_t, delta_t):
@@ -94,13 +94,15 @@ if __name__ == "__main__":
     sim_name = sim_names[0]
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
 
+    start_t = 3
+    end_t = 7
+    rnn = RNNLoader(start_t,end_t,sim_path)
 
-    rnn = RNNLoader(3,4,sim_path)
-
-    delta_t_rnn = 0.05
+    delta_t_rnn = 0.02
 
     print("Generating DataFrame...")
     rnn_df = rnn.local_mean_position(delta_t_rnn)
+    rnn_df.to_csv(f"../model/{start_t}_{end_t}_{delta_t_rnn}s.csv")
 
 
 
