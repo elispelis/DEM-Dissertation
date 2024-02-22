@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 import pickle
 from matplotlib.animation import FuncAnimation
 
-sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed"]
-sim_name = sim_names[0]
+sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed", "Rot_drum_400k"]
+sim_name = sim_names[-1]
 sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
 id_dict_path = rf"V:\GrNN_EDEM-Sims\{sim_name}_data\Export_Data"
-model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5"]
-data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", "../../model/3_7_0.02s_adj.csv"]
-case = -3
+model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5"]
+data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", "../../model/3_7_0.02s_adj.csv", "../../model/400k_3_5_0.05s_adj.csv"]
+case = -1
 data_path = data_paths[case]
 model_path = model_paths[case]
 
@@ -63,13 +63,13 @@ def plot_particles(particle_coords, id_dict, plot, time=None):
         ax.set_ylim(-0.08, 0.03)
         ax.set_xlim(-0.08, 0.08)
 
-        r = 0.00075
+        r = 0.0005
         # radius in display coordinates:
         r_ = ax.transData.transform([r,0])[0] - ax.transData.transform([0,0])[0]
         # marker size as the area of a circle
         particle_plt_size = np.pi * r_**2
 
-        ax.scatter(particle_coords[:,0], particle_coords[:,2], s=particle_plt_size, edgecolors="k", linewidth=0.25, c=particle_coords[:,-1], cmap="coolwarm")
+        ax.scatter(particle_coords[:,0], particle_coords[:,2], s=particle_plt_size, linewidth=0.25, c=particle_coords[:,-1], cmap="coolwarm")
         ax = plt.gca()
         ax.set_aspect('equal', adjustable='box')
         ax.set_title(f"{time:.2f}s")
@@ -88,8 +88,11 @@ def import_dict(dict_path, dict_name):
 
 
 def fix_particle_coords(local_mean, drum_r, drum_w):
+    
     distances = np.sqrt((local_mean[:, 0])**2+(local_mean[:, 2])**2)
     violating_particles = np.where(distances>drum_r)
+
+    profile_fixed = len(violating_particles)
 
     for particle_idx in violating_particles:
         # Normalize the position vector
@@ -99,9 +102,13 @@ def fix_particle_coords(local_mean, drum_r, drum_w):
     
     violating_particles = np.where(abs(local_mean[:,1])>drum_w)
 
+    side_fixed = len(violating_particles)
+
     for particle_idx_w in violating_particles:
             sign_w = np.sign(local_mean[particle_idx_w, 1])
             local_mean[particle_idx_w, 1] = sign_w * drum_w
+        
+    print(f"Fixed {profile_fixed+side_fixed} particle. (Profile:{profile_fixed}, Side: {side_fixed}" )
 
     return local_mean
 
@@ -157,7 +164,7 @@ last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
 
 last_seq = last_seq.values.reshape(-1, seq_length, num_features)
 
-particle_loc_fix = True
+particle_loc_fix = False
 
 # last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
 # index_values = last_seq.index.values.reshape(-1, 1, 1)
@@ -165,7 +172,7 @@ particle_loc_fix = True
 # last_seq = last_seq.values.reshape(-1, seq_length, num_features)
 # last_seq = np.concatenate([last_seq, index_values_for_last_elem], axis=2)
 
-start_t = 5.9
+start_t = 4.9
 t_rnn = 0.05
 extrap_time = t_rnn*200
 drum_r = 0.07

@@ -15,11 +15,13 @@ import os.path
 import csv
 
 class LaceyMixingAnalyzer:
-    def __init__(self, minCoords, maxCoords, Bins, deck):
+    def __init__(self, minCoords, maxCoords, Bins, **kwargs):
         self.minCoords = minCoords
         self.maxCoords = maxCoords
         self.Bins = Bins
-        self.deck = Deck(deck)
+
+        for key, value in kwargs.items():
+            self.deck = Deck(value)
 
     def grid(self):
         lengths = self.maxCoords - self.minCoords
@@ -75,17 +77,22 @@ class LaceyMixingAnalyzer:
                 conc[i] = mass_1[i] / (mass_1[i] + mass_2[i])
 
         return mass_1, mass_2, conc
-    
-    def bin_particles(self, b_coords, div_size, particles):
         
+    def bin_particles(self, b_coords, div_size, particles):
+        slices = []
+
         for i in range(len(b_coords)):
             mins = b_coords[i] - div_size / 2
             maxs = b_coords[i] + div_size / 2
-            
-            slice_t1 = particles[(particles[:, 0] < maxs[0]) & (particles[:, 1] < maxs[1]) & (particles[:, 2] < maxs[2]) &
-                                (particles[:, 0] > mins[0]) & (particles[:, 1] > mins[1]) & (particles[:, 2] > mins[2])]
-            
-        return slice_t1
+
+            # Filter particles within the specified bounds
+            filtered_particles = particles[(particles[:, 0] < maxs[0]) & (particles[:, 1] < maxs[1]) & (particles[:, 2] < maxs[2]) &
+                                        (particles[:, 0] >= mins[0]) & (particles[:, 1] >= mins[1]) & (particles[:, 2] >= mins[2])]
+
+            # Store the filtered particles in the slices list
+            slices.append(filtered_particles)
+
+        return slices
 
     def Lacey(self, mass_1, mass_2, conc, cut_off, p_num):
         P = np.sum(mass_1) / (np.sum(mass_1) + np.sum(mass_2))

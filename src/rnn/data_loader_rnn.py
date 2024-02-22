@@ -37,7 +37,7 @@ class RNNLoader:
         return timestep
 
     def get_particle_data(self, timestep):
-        particle_n = 0
+        particle_n = 0  # change for more than 1 particle type
         x_coords = self.deck.timestep[timestep].particle[particle_n].getSphereXPositions()
         y_coords = self.deck.timestep[timestep].particle[particle_n].getSphereYPositions()
         z_coords = self.deck.timestep[timestep].particle[particle_n].getSphereZPositions()
@@ -90,19 +90,19 @@ class RNNLoader:
 
 if __name__ == "__main__":
         
-    sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem"]
-    sim_name = sim_names[0]
+    sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem", "Rot_drum_400k.dem"]
+    sim_name = sim_names[-1]
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
 
     start_t = 3
-    end_t = 7
+    end_t = 5
     rnn = RNNLoader(start_t,end_t,sim_path)
 
-    delta_t_rnn = 0.02
+    delta_t_rnn = 0.05
 
     print("Generating DataFrame...")
     rnn_df = rnn.local_mean_position(delta_t_rnn)
-    rnn_df.to_csv(f"../model/{start_t}_{end_t}_{delta_t_rnn}s.csv")
+    rnn_df.to_csv(f"../../model/{sim_name[:-4]}_{start_t}_{end_t}_{delta_t_rnn}s.csv")
 
 
 
