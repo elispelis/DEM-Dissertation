@@ -91,7 +91,7 @@ class RNNLoader:
 if __name__ == "__main__":
         
     sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem", "Rot_drum_400k.dem"]
-    sim_name = sim_names[-1]
+    sim_name = sim_names[0]
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
 
     start_t = 3
