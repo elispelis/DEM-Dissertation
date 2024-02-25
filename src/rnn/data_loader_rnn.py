@@ -95,10 +95,10 @@ if __name__ == "__main__":
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
 
     start_t = 3
-    end_t = 5
+    end_t = 7
     rnn = RNNLoader(start_t,end_t,sim_path)
 
-    delta_t_rnn = 0.05
+    delta_t_rnn = 0.02
 
     print("Generating DataFrame...")
     rnn_df = rnn.local_mean_position(delta_t_rnn)
