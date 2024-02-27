@@ -122,18 +122,16 @@ if stochastic_random == True:
         minCoords = np.array([float(i) for i in str(preferences[1]).split(',')])
         maxCoords = np.array([float(i) for i in str(preferences[3]).split(',')])
         bins = np.array([int(i) for i in str(preferences[5]).split(',')])
-        cut_off = float(preferences[7])
+        Ng = int(preferences[7])
         plot = str(preferences[9])
         file.close()
         settings = True
 
-    velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}.csv"
+    velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}.csv"
 
     lacey = LaceyMixingAnalyzer(minCoords, maxCoords, bins)
 
     b_coords, div_size = lacey.grid()
-    cut_off = 0.0001
-
     velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
 
 start_t = 4.9
@@ -151,17 +149,19 @@ for i in range(int(extrap_time/t_rnn)):
     pred_timestep = np.hstack((pred_timestep, id_column))
 
     if stochastic_random == True:
-        #break
+        
         #fix particles to grid
         pred_timestep = fix_particle_coords(pred_timestep, drum_r, drum_w)
 
         #bin particles and apply velocity_std while tracking id
         binned_particles = lacey.bin_particles(b_coords, div_size, pred_timestep)
+        #break
         for bin_velocities, velocity_std in zip(binned_particles, velocity_stds):
-            if len(bin_velocities) == 0:
+            if len(bin_velocities) == 0: #maybe velocity_std instead?
                 continue
             else:
-                bin_velocities[:,:3] += generate_random_velocity(velocity_std)*t_rnn
+                for j in range(len(bin_velocities)):
+                    bin_velocities[j, :3] += generate_random_velocity(velocity_std)*t_rnn
         
         binned_particles = np.vstack(binned_particles)
         sorted_indices = np.argsort(binned_particles[:, -1])
