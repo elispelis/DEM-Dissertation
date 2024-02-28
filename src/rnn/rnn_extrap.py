@@ -160,7 +160,7 @@ for i in range(int(extrap_time/t_rnn)):
         #bin particles and apply velocity_std while tracking id
         binned_particles = lacey.bin_particles(b_coords, div_size, pred_timestep)
         t3 = time()
-        print(f"Bining took {t3-t2:.2f}s")
+        #print(f"Bining took {t3-t2:.2f}s")
         #break
         for bin_velocities, velocity_std in zip(binned_particles, velocity_stds):
             if len(bin_velocities) == 0: #maybe velocity_std instead?
@@ -170,7 +170,7 @@ for i in range(int(extrap_time/t_rnn)):
                     bin_velocities[j, :3] += generate_random_velocity(velocity_std)*t_rnn
         
         t4 = time()
-        print(f"RNG took {t4-t3:.2f}s")
+        #print(f"RNG took {t4-t3:.2f}s")
         
         binned_particles = np.vstack(binned_particles)
         sorted_indices = np.argsort(binned_particles[:, -1])
@@ -178,7 +178,7 @@ for i in range(int(extrap_time/t_rnn)):
         # Sort the array using the obtained indices
         pred_timestep = binned_particles[sorted_indices][:,:3]
         t5 = time()
-        print(f"Total SR took {t5-t1:.2f}s")
+        print(f"Total SR took {t5-t1:.2f}s. Bining took {t3-t2:.2f}s, RNG took {t4-t3:.2f}s")
 
 
 
