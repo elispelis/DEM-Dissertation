@@ -56,16 +56,11 @@ def get_velocity_std(b_coords, div_size, delta_t, Ng, sim_path, bins):
         if len(bin_velocities) < Ng:
             velocity_std_deviation = [0,0,0]
         else:
-            # Step 1: Calculate Deviation from Mean
+            # stdev calculation
             deviations = np.array(bin_velocities[:, 3:6]) - avg_velocity
-            
-            # Step 2: Square the Deviations
             squared_deviations = deviations**2
-            
-            # Step 3: Calculate the Mean of Squared Deviations
             mean_squared_deviation = np.mean(squared_deviations, axis=0)
-            
-            # Step 4: Calculate the Square Root
+
             velocity_std_deviation = np.sqrt(mean_squared_deviation)
             
         velocity_std_deviation_per_bin.append(velocity_std_deviation)
