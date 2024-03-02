@@ -22,7 +22,11 @@ case = -1
 data_path = data_paths[case]
 model_path = model_paths[case]
 
-def plot_particles(particle_coords, id_dict, plot, time=None):
+def plot_particles(particle_coords, id_dict, plot, time, **kwargs):
+    
+    for key, value in kwargs.items():
+        plot_path = value
+    
     if len(particle_coords[0,:])<6:
         id_color = np.array([id_dict.get(id,0) for id in particle_coords[:,-1]])
         particle_coords = np.column_stack((particle_coords, id_color))
@@ -47,6 +51,12 @@ def plot_particles(particle_coords, id_dict, plot, time=None):
         ax.set_title(f"{time:.2f}s")
         
         plt.show()
+
+        if plot_path:
+            fig.savefig(plot_path)
+            plt.clf()
+            plt.close(fig)
+
 
     return particle_coords
 
@@ -94,30 +104,38 @@ def generate_random_velocity(std_deviation):
 
     return np.array((x_vel_random, y_vel_random, z_vel_random))
 
-
+#load id dictionary, model and starting series
 id_dict = import_dict(id_dict_path, "id_dict")
-
 model = tf.keras.models.load_model(model_path)
+
 df = pd.read_csv(data_path, index_col=0)
-
-
 num_features = 3
 num_timesteps = df.shape[1] // num_features
 num_particles = df.shape[0]
 seq_length = 15
 
 last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
-
 last_seq = last_seq.values.reshape(-1, seq_length, num_features)
 
+#extrapolation settings
 particle_loc_fix = False
 stochastic_random = True
+track_lacey = True
+save_plots = True
+show_plots = True
+
+start_t = 4.9
+t_rnn = 0.05
+end_t = 20
+extrap_time = end_t - start_t
+drum_r = 0.07
+drum_w = 0.025
 
 if stochastic_random == True:    
     np.random.seed(42)
     particle_loc_fix = True
 
-    lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings.txt"
+    lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings_SR.txt"
 
     with open(lacey_settings, 'r') as file:
         preferences = file.readlines()
@@ -136,16 +154,32 @@ if stochastic_random == True:
     b_coords, div_size = lacey.grid()
     velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
 
-start_t = 4.9
-t_rnn = 0.05
-extrap_time = t_rnn*200
-drum_r = 0.07
-drum_w = 0.025
+if save_plots == True:
+    show_plots = False
+    plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}_plots"
+    os.makedirs(plots_path, exist_ok=True)
 
+if track_lacey == True:    
 
-#distance = (last_seq[:, -1, :][:, 0])**2+(last_seq[:, -1, :][:, 2])**2
+    lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings.txt"
 
-for i in range(int(extrap_time/t_rnn)):
+    with open(lacey_settings, 'r') as file:
+        preferences = file.readlines()
+        minCoords = np.array([float(i) for i in str(preferences[1]).split(',')])
+        maxCoords = np.array([float(i) for i in str(preferences[3]).split(',')])
+        bins = np.array([int(i) for i in str(preferences[5]).split(',')])
+        cut_off = int(preferences[7])
+        plot = str(preferences[9])
+        file.close()
+        settings = True
+
+    lacey = LaceyMixingAnalyzer(minCoords, maxCoords, bins)
+
+    b_coords_lacey, div_size_lacey = lacey.grid()
+    extrapolated_lacey = []
+    extrapolated_time = []
+
+for i in range(round(extrap_time/t_rnn)):
     pred_timestep = model.predict(last_seq)
     id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
     pred_timestep = np.hstack((pred_timestep, id_column))
@@ -161,7 +195,8 @@ for i in range(int(extrap_time/t_rnn)):
         binned_particles = lacey.bin_particles(b_coords, div_size, pred_timestep)
         t3 = time()
         #print(f"Bining took {t3-t2:.2f}s")
-        #break
+        
+
         for bin_velocities, velocity_std in zip(binned_particles, velocity_stds):
             if len(bin_velocities) == 0: #maybe velocity_std instead?
                 continue
@@ -184,13 +219,39 @@ for i in range(int(extrap_time/t_rnn)):
 
     if particle_loc_fix == True:
         pred_timestep = fix_particle_coords(pred_timestep, drum_r, drum_w)
-    
+
     last_seq = last_seq[:, 1:, :]
     last_seq = np.concatenate((last_seq, pred_timestep[:, np.newaxis, :]), axis=1)
 
-    if i % 5 == 0 and i != 0:
+    if track_lacey == True:
+        #break
+        #calculate lacey index
+        pred_t_mass = np.column_stack((pred_timestep, np.ones(len(pred_timestep)).reshape(-1,1), np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)))
+        pred_t_mass = plot_particles(pred_t_mass, id_dict, False, i)
+        mass_1, mass_2, conc = lacey.bining(b_coords_lacey, div_size_lacey, pred_t_mass, cut_off)
+        Lacey_index = lacey.Lacey(mass_1, mass_2, conc, cut_off, len(pred_timestep))
+        
+        #append lacey data
+        extrapolated_lacey.append(Lacey_index)
+        time_i = start_t+(i+1)*t_rnn
+        extrapolated_time.append(time_i)
+        print(f"Lacey Index: {Lacey_index:.2f}")
+
+    if save_plots == True:
         id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
         pred_timestep = np.hstack((pred_timestep, id_column))
         time_i = start_t+(i+1)*t_rnn
-        print(f"{time_i}s")
+        plot_filename = rf"{plots_path}\{time_i:.2f}.png"
+        plot_particles(pred_timestep, id_dict, True, time_i, plot_path=plot_filename)
+
+    if show_plots and i % 5 == 0 and i != 0:
+        id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
+        pred_timestep = np.hstack((pred_timestep, id_column))
+        time_i = start_t+(i+1)*t_rnn
+        print(f"{time_i:.2f}s")
         plot_particles(pred_timestep, id_dict, True, time_i)
+
+
+
+#save lacey csv
+np.savetxt(rf"{plots_path}\_lacey.csv", np.column_stack((extrapolated_time, extrapolated_lacey)), delimiter=",")
