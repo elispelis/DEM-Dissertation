@@ -23,8 +23,10 @@ import functools
 import numpy as np
 import bottleneck as bn
 from numba import njit
+import sys
+sys.path.append("..")
 
-from src.helpers import generate_random_velocity, logical_or_func_reduce
+from helpers import generate_random_velocity, logical_or_func_reduce
 
 
 # Local Sources

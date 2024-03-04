@@ -1,15 +1,16 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-# sys.path.append("..")
+import sys
+sys.path.append("..")
 
-from src.LaceyClass import LaceyMixingAnalyzer
+from LaceyClass import LaceyMixingAnalyzer
 import os
 import matplotlib.pyplot as plt
 import pickle
 from time import time
-from src.gridbin import GridBin
-from src.helpers import Lacey, fix_particle_coords, unpack_mixing_results
+from gridbin import GridBin
+from helpers import Lacey, fix_particle_coords, unpack_mixing_results
 
 
 sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed", "Rot_drum_400k"]
@@ -129,7 +130,7 @@ if stochastic_random == True:
 
 if save_plots == True:
     show_plots = False
-    plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}_plots"
+    plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}_plots_new"
     os.makedirs(plots_path, exist_ok=True)
 
 if track_lacey == True:    
