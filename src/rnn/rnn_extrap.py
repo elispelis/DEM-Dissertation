@@ -1,23 +1,29 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-import sys
-sys.path.append("..")
-from edempy import Deck
-from extrapolation import extrapolation
-from LaceyClass import LaceyMixingAnalyzer
+# sys.path.append("..")
+
+from src.LaceyClass import LaceyMixingAnalyzer
 import os
 import matplotlib.pyplot as plt
 import pickle
-from matplotlib.animation import FuncAnimation
 from time import time
+from src.gridbin import GridBin
+from src.helpers import Lacey, fix_particle_coords, unpack_mixing_results
+
 
 sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed", "Rot_drum_400k"]
 sim_name = sim_names[-1]
 sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
 id_dict_path = rf"V:\GrNN_EDEM-Sims\{sim_name}_data\Export_Data"
-model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5"]
-data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv"]
+
+model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5",
+               "../../model/model_sl15_tr36_adj.h5", "../../model/model_sl25_tr90_adj.h5",
+               "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5"]
+data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv",
+              "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", "../../model/3_7_0.02s_adj.csv",
+              "../../model/Rot_drum_400k_3_5_0.05s_adj.csv"]
+
 case = -1
 data_path = data_paths[case]
 model_path = model_paths[case]
@@ -69,44 +75,10 @@ def import_dict(dict_path, dict_name):
     return pos_dict
 
 
-def fix_particle_coords(local_mean, drum_r, drum_w):
-
-    violating_particles = np.where(abs(local_mean[:,1])>drum_w)
-
-    side_fixed = len(violating_particles[0])
-
-    for particle_idx_w in violating_particles:
-            #print(local_mean[particle_idx_w])
-            sign_w = np.sign(local_mean[particle_idx_w, 1])
-            local_mean[particle_idx_w, 1] = sign_w * drum_w
-
-    distances = np.sqrt((local_mean[:, 0])**2+(local_mean[:, 2])**2)
-    violating_particles = np.where(distances>drum_r)
-
-    profile_fixed =  len(violating_particles[0])
-
-    for particle_idx in violating_particles:
-        # Normalize the position vector
-        #print(local_mean[particle_idx])
-        norm_factor = drum_r / distances[particle_idx]
-        local_mean[particle_idx, 0] *= norm_factor
-        local_mean[particle_idx, 2] *= norm_factor
-    
-        
-    print(f"Fixed {profile_fixed+side_fixed} particle(s). (Profile: {profile_fixed}, Side: {side_fixed})" )
-
-    return local_mean
-
-def generate_random_velocity(std_deviation):
-    x_vel_random = np.random.normal(loc=0, scale=std_deviation[0])
-    y_vel_random = np.random.normal(loc=0, scale=std_deviation[1])
-    z_vel_random = np.random.normal(loc=0, scale=std_deviation[2])
-
-    return np.array((x_vel_random, y_vel_random, z_vel_random))
-
 #load id dictionary, model and starting series
 id_dict = import_dict(id_dict_path, "id_dict")
-model = tf.keras.models.load_model(model_path)
+model = tf.keras.models.load_model(model_path, compile=False)
+model.compile(optimizer='adam', loss='mse')
 
 df = pd.read_csv(data_path, index_col=0)
 num_features = 3
@@ -152,6 +124,7 @@ if stochastic_random == True:
     lacey = LaceyMixingAnalyzer(minCoords, maxCoords, bins)
 
     b_coords, div_size = lacey.grid()
+    sr_grid_bin = GridBin(minCoords, maxCoords, *bins)
     velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
 
 if save_plots == True:
@@ -179,6 +152,8 @@ if track_lacey == True:
     extrapolated_lacey = []
     extrapolated_time = []
 
+    lacey_grid_bin = GridBin(minCoords, maxCoords, *bins)
+
 for i in range(round(extrap_time/t_rnn)):
     pred_timestep = model.predict(last_seq)
     id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
@@ -192,45 +167,34 @@ for i in range(round(extrap_time/t_rnn)):
         t2 = time()
 
         #bin particles and apply velocity_std while tracking id
-        binned_particles = lacey.bin_particles(b_coords, div_size, pred_timestep)
+        # new_binned_particles = sr_grid_bin.get_binned_data(pred_timestep[:,:3], pred_timestep[:,3])
+        new_positions, binned_indxs = sr_grid_bin.apply_random_velocity(pred_timestep[:,:3], velocity_stds, t_rnn)
         t3 = time()
         #print(f"Bining took {t3-t2:.2f}s")
-        
 
-        for bin_velocities, velocity_std in zip(binned_particles, velocity_stds):
-            if len(bin_velocities) == 0: #maybe velocity_std instead?
-                continue
-            else:
-                for j in range(len(bin_velocities)):
-                    bin_velocities[j, :3] += generate_random_velocity(velocity_std)*t_rnn
-        
-        t4 = time()
+        # np.unravel_index(14681, (sr_grid_bin.xBins, sr_grid_bin.yBins, sr_grid_bin.zBins))
+
         #print(f"RNG took {t4-t3:.2f}s")
-        
-        binned_particles = np.vstack(binned_particles)
-        sorted_indices = np.argsort(binned_particles[:, -1])
 
-        # Sort the array using the obtained indices
-        pred_timestep = binned_particles[sorted_indices][:,:3]
         t5 = time()
-        print(f"Total SR took {t5-t1:.2f}s. Bining took {t3-t2:.2f}s, RNG took {t4-t3:.2f}s")
-
+        print(f"Total SR took {t5-t1:.2f}s. Bining took {t3-t2:.2f}s")
 
 
     if particle_loc_fix == True:
-        pred_timestep = fix_particle_coords(pred_timestep, drum_r, drum_w)
+        new_positions = fix_particle_coords(new_positions, drum_r, drum_w)
 
     last_seq = last_seq[:, 1:, :]
-    last_seq = np.concatenate((last_seq, pred_timestep[:, np.newaxis, :]), axis=1)
+    last_seq = np.concatenate((last_seq, new_positions[:, np.newaxis, :]), axis=1)
 
     if track_lacey == True:
         #break
         #calculate lacey index
-        pred_t_mass = np.column_stack((pred_timestep, np.ones(len(pred_timestep)).reshape(-1,1), np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)))
-        pred_t_mass = plot_particles(pred_t_mass, id_dict, False, i)
-        mass_1, mass_2, conc = lacey.bining(b_coords_lacey, div_size_lacey, pred_t_mass, cut_off)
-        Lacey_index = lacey.Lacey(mass_1, mass_2, conc, cut_off, len(pred_timestep))
-        
+        particle_types = np.array([id_dict.get(id, 0) for id in np.arange(1, new_positions.shape[0] + 1) ])
+        binned_particle_types = lacey_grid_bin.get_particle_concentration(new_positions, particle_types)
+
+        mass_1, mass_2, conc = unpack_mixing_results(lacey_grid_bin, binned_particle_types)
+        Lacey_index = Lacey(mass_1, mass_2, conc, cut_off, len(new_positions))
+
         #append lacey data
         extrapolated_lacey.append(Lacey_index)
         time_i = start_t+(i+1)*t_rnn
