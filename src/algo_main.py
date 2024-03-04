@@ -29,25 +29,37 @@ if __name__ == "__main__":
             "num_bins": 10,  
             "direction": "y",
             "path": os.path.abspath(os.path.join(os.path.dirname(__file__), "..", '..', "Rot_drum", "HM_10rpm_100k", "Rot_drum.dem")),
+        }, 
+        "3": {
+            "domain_x": (-0.07, 0.07), 
+            "domain_y": (-0.025, 0.025), 
+            "domain_z": (-0.07, 0.07), 
+            "num_bins": 10,  
+            "direction": "y",
+            "path": r"V:\GrNN_EDEM-Sims\Rot_drum_400k.dem",
         }
     }
 
     #choose simulation
-    simulation = simulation_settings["2"]
+    simulation = simulation_settings["3"]
     domain_x, domain_y, domain_z, num_bins, direction, simulation_path = simulation.values()
     sim_path = os.path.dirname(simulation_path)
     extrap = extrapolation(start_t, end_t, simulation_path, domain_x, domain_y, domain_z, num_bins, direction)
 
     #assing t1 and t2
-    kinetic_energies, peak_times, peak_index, highlight_y = extrap.kin_energies(0.0002, 5)
+    
 
     #get coordinates and split into subdomains
     if simulation == simulation_settings["1"]:
+        kinetic_energies, peak_times, peak_index, highlight_y = extrap.kin_energies(0.0002, 5)
         particles_t1 = extrap.get_particle_coords(peak_index[1])
         particles_t2 = extrap.get_particle_coords(peak_index[2])
     elif simulation == simulation_settings["2"]:
         particles_t1 = extrap.get_particle_coords(35)
         particles_t2 = extrap.get_particle_coords(40)
+    elif simulation == simulation_settings["3"]:
+        particles_t1 = extrap.get_particle_coords(301)
+        particles_t2 = extrap.get_particle_coords(371)
 
 
     slices_t1, slices_t2 = extrap.slice_particles(particles_t1, particles_t2)

@@ -13,7 +13,9 @@ from matplotlib.animation import FuncAnimation
 from time import time
 
 def plot_particles(particle_coords, id_dict, plot, time, **kwargs):
-    
+    plot_path = None
+
+
     for key, value in kwargs.items():
         plot_path = value
     

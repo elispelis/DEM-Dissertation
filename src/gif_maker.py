@@ -7,7 +7,8 @@ def create_gif(png_folder_path, output_gif_path, delay=1):
     png_files = [file for file in os.listdir(png_folder_path) if file.lower().endswith('.png')]
 
     # Sort the PNG files by name
-    png_files.sort()
+    png_files = sorted(png_files, key=lambda x: float(x[:-4]))
+
 
     # Create a list to store image objects
     images = []
@@ -24,7 +25,7 @@ def create_gif(png_folder_path, output_gif_path, delay=1):
 
 if __name__ == "__main__":
     # Set the input folder containing PNG files and the output GIF file
-    folder =  r"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data\35_12_35_10_plots"
+    folder =  r"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data\dem_sim_plots"
     input_folder = folder
     output_gif = rf"{folder}\output.gif"
 
