@@ -177,7 +177,7 @@ for i in range(round(extrap_time/t_rnn)):
         #print(f"RNG took {t4-t3:.2f}s")
 
         t5 = time()
-        print(f"Total SR took {t5-t1:.2f}s. Bining took {t3-t2:.2f}s")
+        print(f"Total SR took {t5-t1:.2f}s. Binning took {t3-t2:.2f}s")
 
 
     if particle_loc_fix == True:

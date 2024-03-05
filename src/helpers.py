@@ -16,26 +16,25 @@ __maintainer__ = 'J.P. Morrissey'
 __email__ = 'j.morrissey@ed.ac.uk'
 __status__ = '{dev_status}'
 
+# Standard Library
+import functools
+
+# Imports
 import bottleneck as bn
 import numpy as np
 
-
-# Standard Library
-
-
-# Imports
-
-
 # Local Sources
+
+
 
 def fix_particle_coords(local_mean, drum_r, drum_w):
 
-    violating_particles = np.where(abs(local_mean[:,1])>drum_w)[0]
+    violating_particles = np.where(abs(local_mean[:, 1]) > drum_w)[0]
     side_fixed = len(violating_particles)
     local_mean[violating_particles, 1] = np.sign(local_mean[violating_particles, 1]) * drum_w
 
-    distances = np.sqrt((local_mean[:, 0])**2+(local_mean[:, 2])**2)
-    radial_violating_particles = np.where(distances>drum_r)[0]
+    distances = np.sqrt((local_mean[:, 0])**2 + (local_mean[:, 2])**2)
+    radial_violating_particles = np.where(distances > drum_r)[0]
     profile_fixed = len(radial_violating_particles)
 
     norm_factor = drum_r / distances[radial_violating_particles]
