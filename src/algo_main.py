@@ -34,7 +34,7 @@ if __name__ == "__main__":
             "domain_x": (-0.07, 0.07), 
             "domain_y": (-0.025, 0.025), 
             "domain_z": (-0.07, 0.07), 
-            "num_bins": 10,  
+            "num_bins": 8,  
             "direction": "y",
             "path": r"V:\GrNN_EDEM-Sims\Rot_drum_400k.dem",
         }
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         particles_t2 = extrap.get_particle_coords(40)
     elif simulation == simulation_settings["3"]:
         particles_t1 = extrap.get_particle_coords(301)
-        particles_t2 = extrap.get_particle_coords(371)
+        particles_t2 = extrap.get_particle_coords(461)
 
 
     slices_t1, slices_t2 = extrap.slice_particles(particles_t1, particles_t2)
@@ -118,8 +118,8 @@ if __name__ == "__main__":
     dictionary_err = len(position_dictionary) - particles_t1.shape[0]
     if dictionary_err == 0:
         #save pairing dictionary
-        dict_name = f"peak_{num_bins}{direction}_split"
-        extrap.save_dict(sim_path, dict_name, position_dictionary)
+        dict_name = f"{num_bins}{direction}_split"
+        extrap.save_dict(r"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data", dict_name, position_dictionary)
         print(f"Total Run Time: {pairing_time_tot / 60:.0f} min and {pairing_time_tot % 60:.2f} s")
     else:
         raise ValueError(f"Something's wrong. {abs(dictionary_err)} particles remain unmatched")
