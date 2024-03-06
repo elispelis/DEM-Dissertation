@@ -8,7 +8,7 @@ from src.gridbin import GridBin
 from data_loader_rnn import RNNLoader
 
 
-def get_velocity_std(delta_t, Ng, sim_path, bins, minCoords, maxCoords):
+def get_velocity_std(delta_t, drum_radius, sim_path, bins, minCoords, maxCoords):
     velocity_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}.npy"
     sr_grid_bin = GridBin(minCoords, maxCoords, *bins)
 
@@ -25,7 +25,7 @@ def get_velocity_std(delta_t, Ng, sim_path, bins, minCoords, maxCoords):
             particles = rnn.get_particle_data(timestep)
 
             mean_velocities, mean_fluctuating_velocities, binned_indxs = sr_grid_bin.calculate_velocity_stdev(
-                particles.position, particles.velocity)
+                particles.position, particles.velocity, drum_radius)
             velocity_means += mean_velocities
 
         velocity_means /= timesteps.size
@@ -37,7 +37,7 @@ def get_velocity_std(delta_t, Ng, sim_path, bins, minCoords, maxCoords):
         timestep = rnn.find_nearest(rnn.end_t + delta_t, rnn.deck.timestepValues)
         particles = rnn.get_particle_data(timestep)
         mean_velocities, mean_fluctuating_velocities, binned_indxs = sr_grid_bin.calculate_velocity_stdev(
-            particles.position, particles.velocity)
+            particles.position, particles.velocity, drum_radius)
 
     return mean_fluctuating_velocities
 
@@ -45,7 +45,7 @@ def get_velocity_std(delta_t, Ng, sim_path, bins, minCoords, maxCoords):
 sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed", "Rot_drum_400k"]
 sim_name = sim_names[-1]
 sim_path = rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
-lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings.txt"
+lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings_sr.txt"
 velocity_means_path = rf"{sim_path[:-4]}_data\Export_Data\10_5_10.csv"
 
 with open(lacey_settings, 'r') as file:
@@ -64,7 +64,8 @@ print("Done")
 
 delta_t = 0.05
 
-velocity_std_per_bin = get_velocity_std(delta_t, Ng, sim_path, bins, minCoords, maxCoords)
+drum_radius = 0.07
+velocity_std_per_bin = get_velocity_std(delta_t, drum_radius, sim_path, bins, minCoords, maxCoords)
 
 with open(rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{int(Ng)}.npy", 'wb') as f:
     np.save(f, velocity_std_per_bin)

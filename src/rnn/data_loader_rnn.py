@@ -92,7 +92,7 @@ class RNNLoader:
 if __name__ == "__main__":
         
     sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem", "Rot_drum_400k.dem"]
-    sim_name = sim_names[0]
+    sim_name = sim_names[-1]
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
 
     start_t = 3
@@ -105,8 +105,8 @@ if __name__ == "__main__":
     rnn_df = rnn.local_mean_position(delta_t_rnn)
     rnn_df.to_csv(f"../../model/{sim_name[:-4]}_{start_t}_{end_t}_{delta_t_rnn}s.csv")
 
-    with open('test.npy', 'rb') as f:
-        a = np.load(f)
+    # with open('test.npy', 'rb') as f:
+    #     a = np.load(f)
 
 
 

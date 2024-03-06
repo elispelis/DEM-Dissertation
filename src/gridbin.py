@@ -294,7 +294,7 @@ class GridBin:
 
 
 
-    def calculate_velocity_stdev(self, coordinates, velocity):
+    def calculate_velocity_stdev(self, coordinates, velocity, drum_radius):
 
         bin_index, bin_id, outlier_mask = self.get_bin_indices(coordinates, outliers_present=False)
 
@@ -315,9 +315,13 @@ class GridBin:
             binned_data[x][y][z] = np.flatnonzero(mask)
 
             # fluctuating velocity calculation
-            deviations = velocity[mask, :] - velocities[bin, :]
-            mean_squared_deviation = np.mean(deviations**2, axis=0)
-            mean_fluctuating_velocities[bin, :] = np.sqrt(mean_squared_deviation)
+            bin_centre_distance = np.sqrt(self.xBinCentres[x]**2 + self.xBinCentres[z]**2)
+            if bin_centre_distance >= drum_radius:
+                mean_fluctuating_velocities[bin, :] = np.array([0,0,0])
+            else:
+                deviations = velocity[mask, :] - velocities[bin, :]
+                mean_squared_deviation = np.mean(deviations**2, axis=0)
+                mean_fluctuating_velocities[bin, :] = np.sqrt(mean_squared_deviation)
 
         return velocities, mean_fluctuating_velocities, binned_data
 
