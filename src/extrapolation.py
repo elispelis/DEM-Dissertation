@@ -46,63 +46,44 @@ class extrapolation:
             timestep = (np.abs(array-value)).argmin()
             return timestep
 
-    def get_particle_coords(self, timestep):
-        particle_n = 0
-        x_coords = self.deck.timestep[timestep].particle[particle_n].getSphereXPositions()
-        y_coords = self.deck.timestep[timestep].particle[particle_n].getSphereYPositions()
-        z_coords = self.deck.timestep[timestep].particle[particle_n].getSphereZPositions()
+    def get_particle_coords(self, timestep, particle_n=0):
+        pos = self.deck.timestep[timestep].particle[particle_n].getPositions()
         mass = self.deck.timestep[timestep].particle[particle_n].getMass()
         particle_ids = self.deck.timestep[timestep].particle[particle_n].getIds()
 
-        return np.column_stack((x_coords, y_coords, z_coords, mass, particle_ids))
+        return np.column_stack((pos, mass, particle_ids))
+
+    @staticmethod
+    def slice_positions_1d(data, domain, num_bins, direction='x'):
+        if direction == 'x':
+            component = 0
+        elif direction == 'y':
+            component = 1
+        elif direction == 'z':
+            component = 2
+        else:
+            component = 0
+        bin_edges = np.linspace(domain[0], domain[1], num_bins, endpoint=False)
+        bin_indx = np.digitize(data[:, component], bin_edges, right=True)
+        unique_bins = np.unique(bin_indx)
+        slices_t1 = []
+        for bin in unique_bins:
+            slices_t1.append(data[bin_indx == bin, :])
+
+        return slices_t1
 
     def slice_particles(self, particle_locations_t1, particle_locations_t2):
 
-        # Initialize empty lists for slices
-        slices_t1 = []
-        slices_t2 = []
-
-        #bin_size = [(domain_x[1]-domain_x[0]) / num_bins, (domain_y[1]-domain_y[0]) / num_bins, (domain_z[1]-domain_z[0]) / num_bins]
-        bin_size_x = (self.domain_x[1] - self.domain_x[0]) / self.num_bins
-        bin_size_y = (self.domain_y[1] - self.domain_y[0]) / self.num_bins
-        bin_size_z = (self.domain_z[1] - self.domain_z[0]) / self.num_bins
-
-        # for i in range(self.num_bins):
-        #         x_min = self.domain_x[0] + i * bin_size_x
-        #         x_max = self.domain_x[0] + (i + 1) * bin_size_x
-        #         slice_t1 = particle_locations_t1[(particle_locations_t1[:, self.direction_dict[self.direction]] >= x_min) & (particle_locations_t1[:, 0] < x_max)]
-        #         slice_t2 = particle_locations_t2[(particle_locations_t2[:, self.direction_dict[self.direction]] >= x_min) & (particle_locations_t2[:, 0] < x_max)]
-        #         slices_t1.append(slice_t1)
-        #         slices_t2.append(slice_t2)
-
         # Split the domain into slices along the specified direction
         if self.direction == 'x':
-            for i in range(self.num_bins):
-                x_min = self.domain_x[0] + i * bin_size_x
-                x_max = self.domain_x[0] + (i + 1) * bin_size_x
-                slice_t1 = particle_locations_t1[(particle_locations_t1[:, 0] >= x_min) & (particle_locations_t1[:, 0] < x_max)]
-                slice_t2 = particle_locations_t2[(particle_locations_t2[:, 0] >= x_min) & (particle_locations_t2[:, 0] < x_max)]
-                slices_t1.append(slice_t1)
-                slices_t2.append(slice_t2)
+            slices_t1 = self.slice_positions_1d(particle_locations_t1, self.domain_x, self.num_bins, direction='x')
+            slices_t2 = self.slice_positions_1d(particle_locations_t2, self.domain_x, self.num_bins, direction='x')
         elif self.direction == 'y':
-            for j in range(self.num_bins):
-                y_min = self.domain_y[0] + j * bin_size_y
-                y_max = self.domain_y[0] + (j + 1) * bin_size_y
-                slice_t1 = particle_locations_t1[(particle_locations_t1[:, 1] >= y_min) & (particle_locations_t1[:, 1] < y_max)]
-                slice_t2 = particle_locations_t2[(particle_locations_t2[:, 1] >= y_min) & (particle_locations_t2[:, 1] < y_max)]
-                slices_t1.append(slice_t1)
-                slices_t2.append(slice_t2)
+            slices_t1 = self.slice_positions_1d(particle_locations_t1, self.domain_y, self.num_bins, direction='y')
+            slices_t2 = self.slice_positions_1d(particle_locations_t2, self.domain_y, self.num_bins, direction='y')
         elif self.direction == 'z':
-            for k in range(self.num_bins):
-                z_min = self.domain_z[0] + k * bin_size_z
-                z_max = self.domain_z[0] + (k + 1) * bin_size_z
-                slice_t1 = particle_locations_t1[(particle_locations_t1[:, 2] >= z_min) & (particle_locations_t1[:, 2] < z_max)]
-                slice_t2 = particle_locations_t2[(particle_locations_t2[:, 2] >= z_min) & (particle_locations_t2[:, 2] < z_max)]
-                slices_t1.append(slice_t1)
-                slices_t2.append(slice_t2)
-
-            slices_t1 = [np.array(slice) for slice in slices_t1]
-            slices_t2 = [np.array(slice) for slice in slices_t2]
+            slices_t1 = self.slice_positions_1d(particle_locations_t1, self.domain_z, self.num_bins, direction='z')
+            slices_t2 = self.slice_positions_1d(particle_locations_t2, self.domain_z, self.num_bins, direction='z')
 
         return slices_t1, slices_t2
     
@@ -141,7 +122,12 @@ class extrapolation:
 
             for n in range(n_particles):
                 try:
-                    m_kinEnergy = sum(self.deck.timestep[m].particle[n].getKineticEnergy())
+                    # m_kinEnergy = np.sum(self.deck.timestep[m].particle[n].getKineticEnergy())
+                    # edempy kinetic energy calculation is poorly implemented and inordinately slow.
+                    # Quicker (up to x50) to calculate
+                    velocity = self.deck.timestep[m].particle[n].getVelocities()
+                    mass = self.deck.timestep[m].particle[n].getMass()
+                    m_kinEnergy = np.sum(0.5 * mass * np.linalg.norm(velocity, axis=1)**2)
                     kinetic_energies.append(m_kinEnergy)
 
                 except:

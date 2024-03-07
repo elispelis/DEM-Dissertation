@@ -103,6 +103,7 @@ class LaceyMixingAnalyzer:
         S = np.sum(np.power((conc[index] - P), 2)) / nBins
         Sr = S0 / (p_num / nBins)
         M = (S0 - S) / (S0 - Sr)
+
         return M
 
     def render(self, particles, b_coords, name, Lacey_index, time, div_size, sim_path):
