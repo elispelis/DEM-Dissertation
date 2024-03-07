@@ -66,8 +66,11 @@ if __name__ == "__main__":
     sim_name = sim_names[-1]
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
     id_dict_path = rf"V:\GrNN_EDEM-Sims\{sim_name}_data\Export_Data"
-    model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5"]
-    data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv"]
+    model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", 
+                   "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5", "../../model/model_sl30_tr36_adj_big.h5"]
+    
+    data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", 
+                  "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv"]
     case = -1
     data_path = data_paths[case]
     model_path = model_paths[case]
@@ -81,7 +84,7 @@ if __name__ == "__main__":
     num_features = 3
     num_timesteps = df.shape[1] // num_features
     num_particles = df.shape[0]
-    seq_length = 15
+    seq_length = 30
 
     last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
     last_seq = last_seq.values.reshape(-1, seq_length, num_features)
@@ -124,7 +127,7 @@ if __name__ == "__main__":
 
     if save_plots == True:
         show_plots = False
-        plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}_plots_new"
+        plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_sl30_plots_new"
         os.makedirs(plots_path, exist_ok=True)
 
     if track_lacey == True:    
@@ -149,17 +152,27 @@ if __name__ == "__main__":
 
         lacey_grid_bin = GridBin(minCoords, maxCoords, *bins)
 
+    profiles_fixed = []
+    sides_fixed = []
+
+    #MAIN LOOP
     for i in range(round(extrap_time/t_rnn)):
         pred_timestep = model.predict(last_seq)
         id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
         pred_timestep = np.hstack((pred_timestep, id_column))
 
+        profile_i_fixed = 0
+        side_i_fixed = 0
+        
         if stochastic_random == True:
             
             #fix particles to grid
             t1 = time()
-            pred_timestep = fix_particle_coords(pred_timestep, drum_r, drum_w)
+            pred_timestep, profile_fixed, side_fixed = fix_particle_coords(pred_timestep, drum_r, drum_w)
             t2 = time()
+
+            profile_i_fixed += profile_fixed
+            side_i_fixed += side_fixed
 
             #bin particles and apply velocity_std while tracking id
             # new_binned_particles = sr_grid_bin.get_binned_data(pred_timestep[:,:3], pred_timestep[:,3])
@@ -176,7 +189,13 @@ if __name__ == "__main__":
 
 
         if particle_loc_fix == True:
-            new_positions = fix_particle_coords(new_positions, drum_r, drum_w)
+            new_positions, profile_fixed, side_fixed = fix_particle_coords(new_positions, drum_r, drum_w)
+
+            profile_i_fixed += profile_fixed
+            side_i_fixed += side_fixed
+
+        profiles_fixed.append(profile_i_fixed)
+        sides_fixed.append(side_i_fixed)
 
         last_seq = last_seq[:, 1:, :]
         last_seq = np.concatenate((last_seq, new_positions[:, np.newaxis, :]), axis=1)
@@ -214,3 +233,4 @@ if __name__ == "__main__":
 
     #save lacey csv
     np.savetxt(rf"{plots_path}\_lacey.csv", np.column_stack((extrapolated_time, extrapolated_lacey)), delimiter=",")
+    np.savetxt(rf"{plots_path}\_fixed_particles.csv", np.column_stack((extrapolated_time, profiles_fixed, sides_fixed)), delimiter=",")

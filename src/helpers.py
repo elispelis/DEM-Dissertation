@@ -43,7 +43,7 @@ def fix_particle_coords(local_mean, drum_r, drum_w):
 
     print(f"Fixed {profile_fixed+side_fixed} particle(s). (Profile: {profile_fixed}, Side: {side_fixed})" )
 
-    return local_mean
+    return local_mean, profile_fixed, side_fixed
 
 
 def unpack_mixing_results(grid_bin, binned_masses):
