@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-data_paths = ["../model/3_4_0.05s.csv", "../model/3_4_0.01s.csv", "../model/4_6_0.05s.csv", "../../model/3_7_0.02s.csv",  "../../model/Rot_drum_400k_3_5_0.05s.csv"]
+data_paths = ["../model/3_4_0.05s.csv", "../model/3_4_0.01s.csv", "../model/4_6_0.05s.csv", "../../model/3_7_0.02s.csv",  "../../model/Rot_drum_400k_3_5_0.05s.csv", "../../model/Rot_drum_400k_3_5_0.03s.csv"]
 data_path = data_paths[-1]
 
 df = pd.read_csv(data_path, index_col=0)
