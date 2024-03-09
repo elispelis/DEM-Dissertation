@@ -25,12 +25,12 @@ def create_gif(png_folder_path, output_gif_path, delay=1):
 
 if __name__ == "__main__":
     # Set the input folder containing PNG files and the output GIF file
-    folder =  r"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data\dem_sim_plots"
+    folder =  r"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data\35_12_35_sl25_plots"
     input_folder = folder
     output_gif = rf"{folder}\output.gif"
 
     # Set the delay between frames in milliseconds
-    delta_t = 0.05
+    delta_t = 0.03
 
     # Call the function to convert PNG files to GIF with specified delay
     create_gif(input_folder, output_gif, delta_t)
