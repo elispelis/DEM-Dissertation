@@ -67,13 +67,14 @@ if __name__ == "__main__":
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
     id_dict_path = rf"V:\GrNN_EDEM-Sims\{sim_name}_data\Export_Data"
     model_paths = ["../../model/model_sl10_tr144.h5", "../../model/model_sl50_tr80.h5", "../../model/model_sl15_tr36.h5", "../../model/model_sl15_tr36_adj.h5", 
-                   "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5", "../../model/model_sl30_tr36_adj_big.h5" , "../../model/400k_sl25_tr60_adj.h5"]
+                   "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5",
+                     "../../model/model_sl30_tr36_adj_big.h5" , "../../model/400k_sl25_tr60_adj.h5", "../../model/3_6.5_model_sl15_tr63_adj.h5", "../../model/model_sl30_tr60_adj_64batch_0.03s.h5"]
     
     data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", 
-                  "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv", "../../model/Rot_drum_400k_3_5_0.03s_adj.csv"] 
-    case = -1
-    data_path = data_paths[case]
-    model_path = model_paths[case]
+                  "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv", "../../model/Rot_drum_400k_3_5_0.03s_adj.csv", "../../model/Rot_drum_400k_3_6.5_0.05s_adj.csv"] 
+
+    model_path = model_paths[-1]
+    data_path = data_paths[-2]
 
     #load id dictionary, model and starting series
     id_dict = import_dict(id_dict_path, "id_dict")
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     num_features = 3
     num_timesteps = df.shape[1] // num_features
     num_particles = df.shape[0]
-    seq_length = 25
+    seq_length = 30
 
     last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
     last_seq = last_seq.values.reshape(-1, seq_length, num_features)
@@ -98,7 +99,7 @@ if __name__ == "__main__":
 
     start_t = 4.95
     t_rnn = 0.03
-    end_t = 20
+    end_t = 30
     extrap_time = end_t - start_t
     drum_r = 0.07
     drum_w = 0.025
@@ -127,7 +128,7 @@ if __name__ == "__main__":
 
     if save_plots == True:
         show_plots = False
-        plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_sl25_plots"
+        plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_sl30_3_5_0.05s_64batch_plots"
         os.makedirs(plots_path, exist_ok=True)
 
     if track_lacey == True:    
