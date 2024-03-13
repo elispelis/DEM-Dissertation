@@ -11,6 +11,7 @@ import pickle
 from time import time
 from gridbin import GridBin
 from helpers import Lacey, fix_particle_coords, unpack_mixing_results
+import math
 
 
 def plot_particles(particle_coords, id_dict, plot, time, **kwargs):
@@ -61,6 +62,40 @@ def import_dict(dict_path, dict_name):
                 pos_dict = pickle.load(file)
     return pos_dict
 
+def get_daor(particles, grid_y, grid_x, bin_size):
+    delta=np.zeros(len(grid_y))
+    index_nonzero=np.zeros(len(grid_x))
+    SurfaceZ=np.zeros(shape=(len(grid_y),len(grid_x)))
+    SurfaceY=np.zeros(shape=(len(grid_y),len(grid_x)))
+    SurfaceX=np.zeros(shape=(len(grid_y),len(grid_x)))
+    Coord=particles[:,:3]
+
+    for i in range(len(grid_y)):
+    #Find surface particles
+        for j in range (len(grid_x)):
+            index_coord=np.where((Coord[:,0]>(grid_x[j]-bin_size[0]/2)) & (Coord[:,0]<(grid_x[j]+bin_size[0]/2)) & (Coord[:,1]>(grid_y[i]-bin_size[1]/2)) & (Coord[:,1]<(grid_y[i]+bin_size[1]/2)))
+            surf=Coord[index_coord]
+            #Index zero values and get surface particles
+            if surf.shape[0]>0:
+                Max=np.argmax(surf[:,2])
+                SurfaceX[i][j]=surf[Max,0]
+                SurfaceY[i][j]=surf[Max,1]
+                SurfaceZ[i][j]=surf[Max,2]
+                index_nonzero[j]=j
+            else:
+                index_nonzero[j]=-1
+        #Linear fit to surface particles
+        fit=np.polyfit(grid_x[index_nonzero!=-1],SurfaceZ[i][index_nonzero!=-1],1)
+        #Calculating angle of repose and statistics
+        delta[i]=math.atan(abs(fit[0]))*180/math.pi
+
+    
+    delta_mean = np.average(delta)
+    delta_std = np.std(delta)
+    delta_cov = delta_std/delta_mean*100
+
+    return delta_mean, delta_std, delta_cov
+
 if __name__ == "__main__":
     sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed", "Rot_drum_400k"]
     sim_name = sim_names[-1]
@@ -96,6 +131,7 @@ if __name__ == "__main__":
     particle_loc_fix = False
     stochastic_random = True
     track_lacey = True
+    track_DAoR = True
     save_plots = True
     show_plots = True
 
@@ -120,7 +156,6 @@ if __name__ == "__main__":
             Ng = int(preferences[7])
             plot = str(preferences[9])
             file.close()
-            settings = True
 
         velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}.csv"
 
@@ -145,7 +180,6 @@ if __name__ == "__main__":
             cut_off = int(preferences[7])
             plot = str(preferences[9])
             file.close()
-            settings = True
 
         lacey = LaceyMixingAnalyzer(minCoords, maxCoords, bins)
 
@@ -154,6 +188,25 @@ if __name__ == "__main__":
         extrapolated_time = []
 
         lacey_grid_bin = GridBin(minCoords, maxCoords, *bins)
+
+    if track_DAoR == True:
+        daor_settings = f"{sim_path[:-4]}_data\Export_Data\Dynamic_angle_of_repose_analyst_settings.txt"
+
+        with open(daor_settings, 'r') as file:
+            preferences=file.readlines()
+            sim_end=float(preferences[3])
+            domain=np.array(preferences[5].split(','))
+            domain=domain.astype('float64')
+            bin_size=np.array(preferences[7].split(','))
+            bin_size=bin_size.astype('float64')
+            file.close()
+
+        grid_x=np.linspace(domain[0],domain[1],int((domain[1]-domain[0])/bin_size[0]))
+        grid_y=np.linspace(domain[2],domain[3],int((domain[3]-domain[2])/bin_size[1]))
+
+        delta_means = []
+        delta_stds = []
+        delta_covs = []
 
     profiles_fixed = []
     sides_fixed = []
@@ -179,10 +232,9 @@ if __name__ == "__main__":
 
             #bin particles and apply velocity_std while tracking id
             # new_binned_particles = sr_grid_bin.get_binned_data(pred_timestep[:,:3], pred_timestep[:,3])
-            new_positions, binned_indxs = sr_grid_bin.apply_random_velocity(pred_timestep[:,:3], velocity_stds, t_rnn)
+            pred_timestep, binned_indxs = sr_grid_bin.apply_random_velocity(pred_timestep[:,:3], velocity_stds, t_rnn)
             t3 = time()
             #print(f"Bining took {t3-t2:.2f}s")
-
             # np.unravel_index(14681, (sr_grid_bin.xBins, sr_grid_bin.yBins, sr_grid_bin.zBins))
 
             #print(f"RNG took {t4-t3:.2f}s")
@@ -192,7 +244,7 @@ if __name__ == "__main__":
 
 
         if particle_loc_fix == True:
-            new_positions, profile_fixed, side_fixed = fix_particle_coords(new_positions, drum_r, drum_w)
+            pred_timestep, profile_fixed, side_fixed = fix_particle_coords(pred_timestep, drum_r, drum_w)
 
             profile_i_fixed += profile_fixed
             side_i_fixed += side_fixed
@@ -201,22 +253,29 @@ if __name__ == "__main__":
         sides_fixed.append(side_i_fixed)
 
         last_seq = last_seq[:, 1:, :]
-        last_seq = np.concatenate((last_seq, new_positions[:, np.newaxis, :]), axis=1)
+        last_seq = np.concatenate((last_seq, pred_timestep[:, np.newaxis, :]), axis=1)
 
         if track_lacey == True:
             #break
             #calculate lacey index
-            particle_types = np.array([id_dict.get(id, 0) for id in np.arange(1, new_positions.shape[0] + 1) ])
-            binned_particle_types = lacey_grid_bin.get_particle_concentration(new_positions, particle_types)
+            particle_types = np.array([id_dict.get(id, 0) for id in np.arange(1, pred_timestep.shape[0] + 1) ])
+            binned_particle_types = lacey_grid_bin.get_particle_concentration(pred_timestep, particle_types)
 
             mass_1, mass_2, conc = unpack_mixing_results(lacey_grid_bin, binned_particle_types)
-            Lacey_index = Lacey(mass_1, mass_2, conc, cut_off, len(new_positions))
+            Lacey_index = Lacey(mass_1, mass_2, conc, cut_off, len(pred_timestep))
 
             #append lacey data
             extrapolated_lacey.append(Lacey_index)
             time_i = start_t+(i+1)*t_rnn
             extrapolated_time.append(time_i)
             print(f"Lacey Index: {Lacey_index:.2f}")
+
+        if track_DAoR == True:
+            delta_mean, delta_std, delta_cov = get_daor(pred_timestep, grid_y, grid_x, bin_size)
+            print(f"DAoR: {delta_mean:.2f}")
+            delta_means.append(delta_mean)
+            delta_stds.append(delta_std)
+            delta_covs.append(delta_cov)
 
         if save_plots == True:
             id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
@@ -237,3 +296,4 @@ if __name__ == "__main__":
     #save lacey csv
     np.savetxt(rf"{plots_path}\_lacey.csv", np.column_stack((extrapolated_time, extrapolated_lacey)), delimiter=",")
     np.savetxt(rf"{plots_path}\_fixed_particles.csv", np.column_stack((extrapolated_time, profiles_fixed, sides_fixed)), delimiter=",")
+    np.savetxt(rf"{plots_path}\_DAoR.csv", np.column_stack((extrapolated_time, delta_means, delta_stds, delta_covs)), delimiter=",")
