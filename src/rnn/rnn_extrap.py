@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     if save_plots == True:
         show_plots = False
-        plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_sl38_3_4.4_0.02s_plots"
+        plots_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_sl38_3_4.4_0.02s_plots_fixed"
         os.makedirs(plots_path, exist_ok=True)
 
     if track_lacey == True:    
@@ -177,10 +177,9 @@ if __name__ == "__main__":
 
             #bin particles and apply velocity_std while tracking id
             # new_binned_particles = sr_grid_bin.get_binned_data(pred_timestep[:,:3], pred_timestep[:,3])
-            new_positions, binned_indxs = sr_grid_bin.apply_random_velocity(pred_timestep[:,:3], velocity_stds, t_rnn)
+            pred_timestep, binned_indxs = sr_grid_bin.apply_random_velocity(pred_timestep[:,:3], velocity_stds, t_rnn)
             t3 = time()
             #print(f"Bining took {t3-t2:.2f}s")
-
             # np.unravel_index(14681, (sr_grid_bin.xBins, sr_grid_bin.yBins, sr_grid_bin.zBins))
 
             #print(f"RNG took {t4-t3:.2f}s")
@@ -190,7 +189,7 @@ if __name__ == "__main__":
 
 
         if particle_loc_fix == True:
-            new_positions, profile_fixed, side_fixed = fix_particle_coords(new_positions, drum_r, drum_w)
+            pred_timestep, profile_fixed, side_fixed = fix_particle_coords(pred_timestep, drum_r, drum_w)
 
             profile_i_fixed += profile_fixed
             side_i_fixed += side_fixed
@@ -199,16 +198,16 @@ if __name__ == "__main__":
         sides_fixed.append(side_i_fixed)
 
         last_seq = last_seq[:, 1:, :]
-        last_seq = np.concatenate((last_seq, new_positions[:, np.newaxis, :]), axis=1)
+        last_seq = np.concatenate((last_seq, pred_timestep[:, np.newaxis, :]), axis=1)
 
         if track_lacey == True:
             #break
             #calculate lacey index
-            particle_types = np.array([id_dict.get(id, 0) for id in np.arange(1, new_positions.shape[0] + 1) ])
-            binned_particle_types = lacey_grid_bin.get_particle_concentration(new_positions, particle_types)
+            particle_types = np.array([id_dict.get(id, 0) for id in np.arange(1, pred_timestep.shape[0] + 1) ])
+            binned_particle_types = lacey_grid_bin.get_particle_concentration(pred_timestep, particle_types)
 
             mass_1, mass_2, conc = unpack_mixing_results(lacey_grid_bin, binned_particle_types)
-            Lacey_index = Lacey(mass_1, mass_2, conc, cut_off, len(new_positions))
+            Lacey_index = Lacey(mass_1, mass_2, conc, cut_off, len(pred_timestep))
 
             #append lacey data
             extrapolated_lacey.append(Lacey_index)
