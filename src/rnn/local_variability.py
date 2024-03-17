@@ -4,7 +4,7 @@ import sys
 import numpy as np
 
 sys.path.append("..")
-from src.gridbin import GridBin
+from gridbin import GridBin
 from data_loader_rnn import RNNLoader
 
 
@@ -45,7 +45,7 @@ def get_velocity_std(delta_t, drum_radius, sim_path, bins, minCoords, maxCoords)
 sim_names = ["Rot_drum_mono", "Rot_drum_binary_mixed", "Rot_drum_400k"]
 sim_name = sim_names[-1]
 sim_path = rf"V:\GrNN_EDEM-Sims\{sim_name}.dem"
-lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings_sr.txt"
+lacey_settings = f"{sim_path[:-4]}_data\Export_Data\Lacey_settings_SR.txt"
 velocity_means_path = rf"{sim_path[:-4]}_data\Export_Data\10_5_10.csv"
 
 with open(lacey_settings, 'r') as file:

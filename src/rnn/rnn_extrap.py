@@ -105,13 +105,13 @@ if __name__ == "__main__":
                    "../../model/model_sl25_tr90_adj.h5", "../../model/model_sl25_tr180_adj.h5", "../../model/model_sl15_tr36_adj_big.h5",
                      "../../model/model_sl30_tr36_adj_big.h5" , "../../model/400k_sl25_tr60_adj.h5", "../../model/3_6.5_model_sl15_tr63_adj.h5", 
                      "../../model/model_sl30_tr60_adj_64batch_0.03s.h5", "../../model/3_4.4_0.02s_model_sl38_tr64_adj.h5","../../model/3_4.4_0.02s_model_sl25_tr64_adj.h5",
-                     "../../model/model_sl17_tr60_3_5_0.03s_adj_128batch_30epoch.h5", "../../model/model_sl15_tr63_3_6.5_30epoch_128batch_adj.h5"]
+                     "../../model/model_sl17_tr60_3_5_0.03s_adj_128batch_30epoch.h5", "../../model/model_sl15_tr63_3_6.5_30epoch_128batch_adj.h5", "../../model/model_sl15_tr36_3_5_0.05s_20ep_32_batch_adj.h5"]
     
     data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", 
                   "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv", "../../model/Rot_drum_400k_3_5_0.03s_adj.csv", "../../model/Rot_drum_400k_3_6.5_0.05s_adj.csv", "../../model/Rot_drum_400k_3_4.4_0.02s_adj.csv"] 
 
-    model_path = model_paths[-1]
-    data_path = data_paths[-2]
+    model_path = model_paths[6]
+    data_path = data_paths[-4]
 
     #load id dictionary, model and starting series
     id_dict = import_dict(id_dict_path, "id_dict")
@@ -131,12 +131,12 @@ if __name__ == "__main__":
     particle_loc_fix = False
     stochastic_random = True
     track_lacey = True
-    track_DAoR = True
+    track_DAoR = False
     save_plots = True
     show_plots = True
     save_coords = True
 
-    start_t = 6.4
+    start_t = 4.9
     t_rnn = 0.05
     end_t = 20
     extrap_time = end_t - start_t
@@ -158,15 +158,16 @@ if __name__ == "__main__":
             plot = str(preferences[9])
             file.close()
 
-        velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}.csv"
+        velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}.npy"
 
         #b_coords, div_size = lacey.grid()
         sr_grid_bin = GridBin(minCoords, maxCoords, *bins)
-        velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
+        #velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
+        velocity_stds = np.load(velocity_std_path)
 
     if save_plots == True:
         show_plots = False
-        plots_path = rf"{sim_path[:-4]}_data\Export_Data\RNNSR_plots\{bins[0]}_{bins[1]}_{bins[2]}_sl{seq_length}_3_6.5_{t_rnn}s_plots_30ep_128batch"
+        plots_path = rf"{sim_path[:-4]}_data\Export_Data\RNNSR_plots\{bins[0]}_{bins[1]}_{bins[2]}_sl{seq_length}_3_5_{t_rnn}s_plots_20ep_64batch"
         os.makedirs(plots_path, exist_ok=True)
         os.makedirs(rf"{plots_path}\timestep_data", exist_ok=True)
 
@@ -287,7 +288,10 @@ if __name__ == "__main__":
             plot_particles(pred_timestep, id_dict, True, time_i, plot_path=plot_filename)
         
         if save_coords == True:
-            np.savetxt(rf"{plots_path}\timestep_data\{time_i:.2f}.csv", pred_timestep, delimiter=",")
+            #np.savetxt(rf"{plots_path}\timestep_data\{time_i:.2f}.csv", pred_timestep, delimiter=",")
+            
+            with open(rf"{plots_path}\timestep_data\{time_i:.2f}.npy", 'wb') as f:
+                np.save(f, pred_timestep)
 
         if show_plots and i % 5 == 0 and i != 0:
             id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
