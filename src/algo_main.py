@@ -34,7 +34,7 @@ if __name__ == "__main__":
             "domain_x": (-0.07, 0.07), 
             "domain_y": (-0.025, 0.025), 
             "domain_z": (-0.07, 0.07), 
-            "num_bins": 8,  
+            "num_bins": 6,  
             "direction": "y",
             "path": r"V:\GrNN_EDEM-Sims\Rot_drum_400k.dem",
         }
@@ -58,8 +58,10 @@ if __name__ == "__main__":
         particles_t1 = extrap.get_particle_coords(35)
         particles_t2 = extrap.get_particle_coords(40)
     elif simulation == simulation_settings["3"]:
-        particles_t1 = extrap.get_particle_coords(301)
-        particles_t2 = extrap.get_particle_coords(461)
+        start_idx = 311
+        end_idx = 336
+        particles_t1 = extrap.get_particle_coords(start_idx)
+        particles_t2 = extrap.get_particle_coords(end_idx)
 
 
     slices_t1, slices_t2 = extrap.slice_particles(particles_t1, particles_t2)
@@ -118,7 +120,7 @@ if __name__ == "__main__":
     dictionary_err = len(position_dictionary) - particles_t1.shape[0]
     if dictionary_err == 0:
         #save pairing dictionary
-        dict_name = f"{num_bins}{direction}_split"
+        dict_name = f"{num_bins}{direction}_split_{start_idx}_{end_idx}"
         extrap.save_dict(r"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data", dict_name, position_dictionary)
         print(f"Total Run Time: {pairing_time_tot / 60:.0f} min and {pairing_time_tot % 60:.2f} s")
     else:
