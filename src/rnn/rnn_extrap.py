@@ -106,13 +106,14 @@ if __name__ == "__main__":
                     "../../model/model_sl30_tr36_adj_big.h5" , "../../model/400k_sl25_tr60_adj.h5", "../../model/3_6.5_model_sl15_tr63_adj.h5", 
                     "../../model/model_sl30_tr60_adj_64batch_0.03s.h5", "../../model/3_4.4_0.02s_model_sl38_tr64_adj.h5","../../model/3_4.4_0.02s_model_sl25_tr64_adj.h5",
                     "../../model/model_sl17_tr60_3_5_0.03s_adj_128batch_30epoch.h5", "../../model/model_sl15_tr63_3_6.5_30epoch_128batch_adj.h5", "../../model/model_sl15_tr36_3_5_0.05s_20ep_32_batch_adj.h5",
-                    "../../model/model_sl25_tr60_3_5_0.03s_20epoch_128batch_adj.h5", "../../model/model_sl50_tr60_3_5_0.03s_30ep_128batch_adj.h5", "../../model/model_sl25_tr60_3_5_0.03s_20ep_64batch_adj.h5"]
+                    "../../model/model_sl25_tr60_3_5_0.03s_20epoch_128batch_adj.h5", "../../model/model_sl50_tr60_3_5_0.03s_30ep_128batch_adj.h5", "../../model/model_sl25_tr60_3_5_0.03s_20ep_64batch_adj.h5",
+                    "../../model/model_sl30_tr63_3_6.5_0.05s_30epoch_128batch_adj.h5"]
     
     data_paths = ["../../model/3_4_0.05s.csv", "../../model/3_4_0.01s.csv", "../../model/4_6_0.05s.csv", "../../model/4_6_0.05s_adj.csv", "../../model/3_4_0.01s.csv", 
                   "../../model/3_7_0.02s_adj.csv", "../../model/Rot_drum_400k_3_5_0.05s_adj.csv", "../../model/Rot_drum_400k_3_5_0.03s_adj.csv", "../../model/Rot_drum_400k_3_6.5_0.05s_adj.csv", "../../model/Rot_drum_400k_3_4.4_0.02s_adj.csv"] 
 
     model_path = model_paths[-1]
-    data_path = data_paths[-3]
+    data_path = data_paths[-2]
 
     #load id dictionary, model and starting series
     id_dict = import_dict(id_dict_path, "id_dict")
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     num_features = 3
     num_timesteps = df.shape[1] // num_features
     num_particles = df.shape[0]
-    seq_length = 25
+    seq_length = 30
 
     last_seq = df.iloc[:, (num_timesteps-seq_length)*num_features:]
     last_seq = last_seq.values.reshape(-1, seq_length, num_features)
@@ -137,8 +138,8 @@ if __name__ == "__main__":
     show_plots = True
     save_coords = True
 
-    start_t = 4.95
-    t_rnn = 0.03
+    start_t = 6.4
+    t_rnn = 0.05
     end_t = 20
     extrap_time = end_t - start_t
     drum_r = 0.07
@@ -168,7 +169,7 @@ if __name__ == "__main__":
 
     if save_plots == True:
         show_plots = False
-        plots_path = rf"{sim_path[:-4]}_data\Export_Data\RNNSR_plots\{bins[0]}_{bins[1]}_{bins[2]}_sl{seq_length}_3_5_{t_rnn}s_plots_20ep_64batch"
+        plots_path = rf"{sim_path[:-4]}_data\Export_Data\RNNSR_plots\{bins[0]}_{bins[1]}_{bins[2]}_sl{seq_length}_3_6.5_{t_rnn}s_plots_30ep_128batch"
         os.makedirs(plots_path, exist_ok=True)
         os.makedirs(rf"{plots_path}\timestep_data", exist_ok=True)
 
