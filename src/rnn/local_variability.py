@@ -1,6 +1,6 @@
 import os
 import sys
-
+import time
 import numpy as np
 
 sys.path.append("..")
@@ -65,7 +65,13 @@ print("Done")
 delta_t = 0.05
 
 drum_radius = 0.07
-velocity_std_per_bin = get_velocity_std(delta_t, drum_radius, sim_path, bins, minCoords, maxCoords)
 
-with open(rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{int(Ng)}.npy", 'wb') as f:
+timer1 = time.time()
+velocity_std_per_bin = get_velocity_std(delta_t, drum_radius, sim_path, bins, minCoords, maxCoords)
+timer2 = time.time()
+
+with open(rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{int(Ng)}_test.npy", 'wb') as f:
     np.save(f, velocity_std_per_bin)
+
+total_time = timer2-timer1
+print(f"Total Run Time: {total_time / 60:.0f} min and {total_time % 60:.2f} s")
