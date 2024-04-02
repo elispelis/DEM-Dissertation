@@ -1,8 +1,18 @@
 import os
 import csv
+from dataclasses import dataclass
+import time
 import pandas as pd
 from edempy import Deck
 import numpy as np
+
+
+@dataclass
+class ParticleData:
+    ids: np.ndarray
+    position: np.ndarray
+    velocity: np.ndarray
+    mass: np.ndarray
 
 class RNNLoader:
     def __init__(self, start_t, end_t, deck):
@@ -38,18 +48,14 @@ class RNNLoader:
 
     def get_particle_data(self, timestep):
         particle_n = 0  # change for more than 1 particle type
-        x_coords = self.deck.timestep[timestep].particle[particle_n].getSphereXPositions()
-        y_coords = self.deck.timestep[timestep].particle[particle_n].getSphereYPositions()
-        z_coords = self.deck.timestep[timestep].particle[particle_n].getSphereZPositions()
 
-        x_vel = self.deck.timestep[timestep].particle[particle_n].getXVelocities()
-        y_vel = self.deck.timestep[timestep].particle[particle_n].getYVelocities()
-        z_vel = self.deck.timestep[timestep].particle[particle_n].getZVelocities()
+        pos = self.deck.timestep[timestep].particle[particle_n].getPositions()
+        vel = self.deck.timestep[timestep].particle[particle_n].getVelocities()
 
         mass = self.deck.timestep[timestep].particle[particle_n].getMass()
         particle_ids = self.deck.timestep[timestep].particle[particle_n].getIds()
 
-        return np.column_stack((x_coords, y_coords, z_coords, x_vel, y_vel, z_vel, mass, particle_ids))
+        return ParticleData(particle_ids, pos, vel, mass)
     
     def read_p4_data(data_path):
         # Iterate through all files in the specified folder
@@ -70,17 +76,12 @@ class RNNLoader:
 
         for timestep in np.arange(self.start_t, self.end_t, delta_t):
             timestep_index = self.find_nearest(self.deck.timestepValues, timestep)
-
             particle_data = self.get_particle_data(timestep_index)
-            coords = particle_data[:,:3]
-            vels = particle_data[:, 3:6]
-            p_id = particle_data[:, -1]
-
-            local_mean_pos = coords - vels * delta_t
+            local_mean_pos = particle_data.position - particle_data.velocity * delta_t
 
             previous_t = timestep - delta_t
             
-            temp_df = pd.DataFrame(local_mean_pos, columns=[f"X_{previous_t:.2f}", f"Y_{previous_t:.2f}", f"Z_{previous_t:.2f}"], index=p_id)
+            temp_df = pd.DataFrame(local_mean_pos, columns=[f"X_{previous_t:.2f}", f"Y_{previous_t:.2f}", f"Z_{previous_t:.2f}"], index=particle_data.ids)
 
             df = pd.merge(df, temp_df, left_index=True, right_index=True, how='outer')
         
@@ -93,17 +94,22 @@ if __name__ == "__main__":
     sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem", "Rot_drum_400k.dem"]
     sim_name = sim_names[-1]
     sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
-
+    timer1= time.time()
     start_t = 3
-    end_t = 5
+    end_t = 6.5
     rnn = RNNLoader(start_t,end_t,sim_path)
 
     delta_t_rnn = 0.05
 
     print("Generating DataFrame...")
     rnn_df = rnn.local_mean_position(delta_t_rnn)
-    rnn_df.to_csv(f"../../model/{sim_name[:-4]}_{start_t}_{end_t}_{delta_t_rnn}s.csv")
+    timer2 = time.time()
+    rnn_df.to_csv(f"../../model/{sim_name[:-4]}_{start_t}_{end_t}_{delta_t_rnn}s_test.csv")
+    total_time = timer2-timer1
+    print(f"Total Run Time: {total_time / 60:.0f} min and {total_time % 60:.2f} s")
 
+    # with open('test.npy', 'rb') as f:
+    #     a = np.load(f)
 
 
 
