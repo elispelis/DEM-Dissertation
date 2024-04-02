@@ -13,7 +13,6 @@ def create_gif(png_folder_path, output_gif_path, delay=1):
     # Create a list to store image objects
     images = []
 
-    # Open and append each PNG file to the list
     for png_file in png_files:
         file_path = os.path.join(png_folder_path, png_file)
         img = Image.open(file_path)
@@ -31,8 +30,6 @@ if __name__ == "__main__":
 
     # Set the delay between frames in milliseconds
     delta_t = 0.03
-
-    # Call the function to convert PNG files to GIF with specified delay
     create_gif(input_folder, output_gif, delta_t)
 
     print(f"GIF created: {output_gif}")

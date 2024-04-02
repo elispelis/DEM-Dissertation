@@ -37,6 +37,4 @@ def crop_images_in_subfolder(folder):
 # Master folder containing nested folders with images
 master_folder = folder = rf"V:\GrNN_EDEM-Sims\Rot_drum_400k_data\Export_Data\RNNSR_plots"
 
-
-# Call the function to crop images in each folder
 crop_images_in_subfolder(master_folder)

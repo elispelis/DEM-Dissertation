@@ -7,41 +7,15 @@ def rnn_arch(seq_length,num_features):
     # Define the RNN model
     model = Sequential()
 
-    # Add a SimpleRNN layer with the specified number of units
+    # Add a GRU layer with the specified number of units
     model.add(GRU(units=seq_length, activation='relu', input_shape=(seq_length, num_features)))
 
     # Add a Dense layer for the output with the appropriate number of units (equal to the number of features)
     model.add(Dense(units=num_features, activation='linear'))
-
-    # Compile the model with an appropriate optimizer and loss function
     model.compile(optimizer='adam', loss='mse')  # Adjust optimizer and loss function as needed
-
-    # Print the summary of the model architecture
     model.summary()
 
     return model
-
-
-# model = Sequential()
-# model.add(GRU(units=seq_length, input_shape =((seq_length, num_features)), return_sequences=True))
-# model.add(Dense(units=3, activation="linear"))
-# model.compile(optimizer='adam', loss='mse')
-
-# # split a multivariate sequence into samples
-# def split_sequences(sequences, n_steps):
-# 	X, y = list(), list()
-# 	for i in range(len(sequences)):
-# 		# find the end of this pattern
-# 		end_ix = i + n_steps
-# 		# check if we are beyond the dataset
-# 		if end_ix > len(sequences)-1:
-# 			break
-# 		# gather input and output parts of the pattern
-# 		seq_x, seq_y = sequences[i:end_ix, :], sequences[end_ix, :]
-# 		X.append(seq_x)
-# 		y.append(seq_y)
-# 	return np.array(X), np.array(y)
-
 
 def split_sequences(dataframe, n_steps):
 
