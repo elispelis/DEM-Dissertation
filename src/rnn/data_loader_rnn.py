@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+import time
 
 import numpy as np
 import pandas as pd
@@ -94,17 +95,20 @@ class RNNLoader:
 if __name__ == "__main__":
     sim_names = ["Rot_drum_mono.dem", "Rot_drum_binary_mixed.dem", "Rot_drum_400k.dem"]
     sim_name = sim_names[-1]
-    sim_path = rf"V:\GrNN_EDEM-Sims\{sim_name}"
-
+    sim_path =rf"V:\GrNN_EDEM-Sims\{sim_name}"
+    timer1= time.time()
     start_t = 3
     end_t = 7
-    rnn = RNNLoader(start_t, end_t, sim_path)
+    rnn = RNNLoader(start_t,end_t,sim_path)
 
-    delta_t_rnn = 0.02
+    delta_t_rnn = 0.05
 
     print("Generating DataFrame...")
     rnn_df = rnn.local_mean_position(delta_t_rnn)
-    rnn_df.to_csv(f"../../model/{sim_name[:-4]}_{start_t}_{end_t}_{delta_t_rnn}s.csv")
+    timer2 = time.time()
+    rnn_df.to_csv(f"../../model/{sim_name[:-4]}_{start_t}_{end_t}_{delta_t_rnn}s_test.csv")
+    total_time = timer2-timer1
+    print(f"Total Run Time: {total_time / 60:.0f} min and {total_time % 60:.2f} s")
 
     # with open('test.npy', 'rb') as f:
     #     a = np.load(f)

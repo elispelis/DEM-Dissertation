@@ -146,7 +146,7 @@ if __name__ == "__main__":
     num_features = 3
     num_timesteps = df.shape[1] // num_features
     num_particles = df.shape[0]
-    seq_length = 15
+    seq_length = 30
 
     last_seq = df.iloc[:, (num_timesteps - seq_length) * num_features:]
     last_seq = last_seq.values.reshape(-1, seq_length, num_features)
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     particle_loc_fix = False
     stochastic_random = True
     track_lacey = True
-    track_DAoR = True
+    track_DAoR = False
     save_plots = True
     show_plots = True
     save_coords = True
@@ -182,11 +182,12 @@ if __name__ == "__main__":
             plot = str(preferences[9])
             file.close()
 
-        velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}.csv"
+        velocity_std_path = rf"{sim_path[:-4]}_data\Export_Data\{bins[0]}_{bins[1]}_{bins[2]}_{Ng}.npy"
 
         #b_coords, div_size = lacey.grid()
         sr_grid_bin = GridBin(minCoords, maxCoords, *bins)
-        velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
+        #velocity_stds = np.genfromtxt(velocity_std_path, delimiter=",")
+        velocity_stds = np.load(velocity_std_path)
 
     if save_plots == True:
         show_plots = False
@@ -308,7 +309,10 @@ if __name__ == "__main__":
             plot_particles(pred_timestep, id_dict, True, time_i, plot_path=plot_filename)
 
         if save_coords == True:
-            np.savetxt(rf"{plots_path}\timestep_data\{time_i:.2f}.csv", pred_timestep, delimiter=",")
+            #np.savetxt(rf"{plots_path}\timestep_data\{time_i:.2f}.csv", pred_timestep, delimiter=",")
+
+            with open(rf"{plots_path}\timestep_data\{time_i:.2f}.npy", 'wb') as f:
+                np.save(f, pred_timestep)
 
         if show_plots and i % 5 == 0 and i != 0:
             id_column = np.arange(1, pred_timestep.shape[0] + 1).reshape(-1, 1)
