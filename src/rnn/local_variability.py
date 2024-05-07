@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 
+
 sys.path.append("..")
 from src.gridbin import GridBin
 from data_loader_rnn import RNNLoader

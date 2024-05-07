@@ -1,9 +1,37 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from keras import Sequential
-from keras.layers import GRU, Dense, SimpleRNN
+from keras.layers import Dense, GRU
 
-def rnn_arch(seq_length,num_features):
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+class GRUModel(nn.Module):
+    def __init__(self, num_layers, input_size, hidden_size, output_size):
+        super(GRUModel, self).__init__()
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.gru = nn.GRU(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+        )
+        self.fc = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        hidden_state = self.init_hidden()
+        output, hidden_state = self.gru(x, hidden_state)
+        output = self.fc(output[-1])
+        return output
+
+    def init_hidden(self):
+        return torch.zeros(self.num_layers, 1, self.hidden_size).to(device)
+
+
+def rnn_arch(seq_length, num_features):
     # Define the RNN model
     model = Sequential()
 
@@ -44,7 +72,6 @@ def rnn_arch(seq_length,num_features):
 
 
 def split_sequences(dataframe, n_steps):
-
     # Number of total timesteps
     total_timesteps = dataframe.shape[1]
 
@@ -59,20 +86,19 @@ def split_sequences(dataframe, n_steps):
     for i in range(total_samples):
         for j in range(total_timesteps - n_steps):
             # Input sequence (previous timesteps)
-            x_seq = dataframe[i, j:j+n_steps, :]
-            
+            x_seq = dataframe[i, j:j + n_steps, :]
+
             # Output sequence (next timestep)
-            y_seq = dataframe[i, j+n_steps, :]
-            
+            y_seq = dataframe[i, j + n_steps, :]
+
             # Append to the lists
             x_data.append(x_seq)
             y_data.append(y_seq)
 
-    return np.array(x_data), np.array(y_data) 
+    return np.array(x_data), np.array(y_data)
 
 
 if __name__ == "__main__":
-
     df = pd.read_csv("../../model/Rot_drum_400k_3_5_0.05s_adj.csv", index_col=0)
 
     num_features = 3
@@ -81,13 +107,12 @@ if __name__ == "__main__":
     seq_length = 30
 
     train_frac = 0.9
-    train_size = int(train_frac*num_timesteps*num_features)
+    train_size = int(train_frac * num_timesteps * num_features)
     train_df = df.iloc[:, :train_size]
-    test_df = df.iloc[:, (num_timesteps-seq_length-1)*num_features:]
+    test_df = df.iloc[:, (num_timesteps - seq_length - 1) * num_features:]
 
-    train_df = train_df.values.reshape(-1, int(num_timesteps*train_frac), 3)
-    test_df = test_df.values.reshape(-1, seq_length+1, 3)
-
+    train_df = train_df.values.reshape(-1, int(num_timesteps * train_frac), 3)
+    test_df = test_df.values.reshape(-1, seq_length + 1, 3)
 
     # Apply the split_sequences function to create input-output pairs
     X_train, y_train = split_sequences(train_df, seq_length)
@@ -103,4 +128,4 @@ if __name__ == "__main__":
     #     last_sequences.append(X_test[i])
 
     # last_sequences = np.array(last_sequences)
-    model.save(f"../../model/model_sl{seq_length}_tr{int(train_size/num_features)}_adj.h5")
+    model.save(f"../../model/model_sl{seq_length}_tr{int(train_size / num_features)}_adj.h5")
